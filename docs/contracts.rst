@@ -472,6 +472,13 @@ The following statements are considered modifying the state:
 .. note::
   Getter methods are marked ``view``.
 
+.. note::
+  If invalid explicit type conversions are used, state modifications are possible
+  even though a ``view`` function was called.
+  You can switch the compiler to use STATICCALL when calling such functions and thus
+  prevent modifications to the state on the level of the EVM by adding
+  ``pragma experimental "v0.5.0";``
+
 .. warning::
   Before version 0.4.17 the compiler didn't enforce that ``view`` is not modifying the state.
 
@@ -501,6 +508,15 @@ In addition to the list of state modifying statements explained above, the follo
             return a * (b + 42);
         }
     }
+
+.. note::
+  If invalid explicit type conversions are used, state modifications are possible
+  even though a ``pure`` function was called.
+  You can switch the compiler to use STATICCALL when calling such functions and thus
+  prevent modifications to the state on the level of the EVM by adding
+  ``pragma experimental "v0.5.0";``
+  It is not possible to prevent functions from reading the state at the level
+  of the EVM.
 
 .. warning::
   Before version 0.4.17 the compiler didn't enforce that ``view`` is not reading the state.
