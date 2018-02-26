@@ -100,7 +100,6 @@ BOOST_AUTO_TEST_CASE(double_variable_declaration_050)
 	)";
 	CHECK_WARNING_ALLOW_MULTI(text, (vector<string>{
 		"This declaration shadows an existing declaration.",
-		"Experimental features",
 		"Unused local variable",
 		"Unused local variable"
 	}));
@@ -131,7 +130,6 @@ BOOST_AUTO_TEST_CASE(double_variable_declaration_disjoint_scope_050)
 		}
 	)";
 	CHECK_WARNING_ALLOW_MULTI(text, (vector<string>{
-		"Experimental features",
 		"Unused local variable",
 		"Unused local variable"
 	}));
@@ -162,7 +160,6 @@ BOOST_AUTO_TEST_CASE(double_variable_declaration_disjoint_scope_activation_050)
 		}
 	)";
 	CHECK_WARNING_ALLOW_MULTI(text, (vector<string>{
-		"Experimental features",
 		"Unused local variable",
 		"Unused local variable"
 	}));
@@ -260,7 +257,7 @@ BOOST_AUTO_TEST_CASE(scoping_for)
 			}
 		}
 	)";
-	CHECK_WARNING(text, "Experimental features");
+	CHECK_SUCCESS_NO_WARNINGS(text);
 }
 
 BOOST_AUTO_TEST_CASE(scoping_for2)
@@ -274,7 +271,7 @@ BOOST_AUTO_TEST_CASE(scoping_for2)
 			}
 		}
 	)";
-	CHECK_WARNING(text, "Experimental features");
+	CHECK_SUCCESS_NO_WARNINGS(text);
 }
 
 BOOST_AUTO_TEST_CASE(scoping_for3)
@@ -7651,7 +7648,7 @@ BOOST_AUTO_TEST_CASE(non_external_fallback)
 			function () external { }
 		}
 	)";
-	CHECK_WARNING(text, "Experimental features are turned on.");
+	CHECK_SUCCESS_NO_WARNINGS(text);
 	text = R"(
 		pragma experimental "v0.5.0";
 		contract C {
