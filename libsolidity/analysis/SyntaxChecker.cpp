@@ -226,6 +226,23 @@ bool SyntaxChecker::visit(FunctionDefinition const& _function)
 				"\"."
 			);
 	}
+
+	if (v050)
+	{
+		// The parser still regards functions with the same name as the contract as constructors.
+		// In this case the function name will be non-emptpy, whereas it will be empty for
+		// constructors using the new syntax.
+		if (_function.isConstructor() && !_function.name().empty())
+			m_errorReporter.syntaxError(_function.location(), "Functions are not allowed to have the same name as the contract.");
+	}
+	else
+	{
+		if (_function.isConstructor() && _function.name().empty())
+			m_errorReporter.warning(
+				_function.location(),
+				"The 'constructor' keyword is only introduced in version 0.5.0."
+			);
+	}
 	return true;
 }
 

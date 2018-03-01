@@ -1182,6 +1182,34 @@ BOOST_AUTO_TEST_CASE(base_constructor_arguments_override)
 	CHECK_SUCCESS(text);
 }
 
+BOOST_AUTO_TEST_CASE(new_constructor_syntax)
+{
+	char const* text = R"(
+		contract A { constructor() public {} }
+	)";
+	CHECK_WARNING(text, "The 'constructor' keyword is only introduced in version 0.5.0.");
+
+	text = R"(
+		pragma experimental "v0.5.0";
+		contract A { constructor() public {} }
+	)";
+	CHECK_SUCCESS(text);
+}
+
+BOOST_AUTO_TEST_CASE(old_constructor_syntax)
+{
+	char const* text = R"(
+		contract A { function A() public {} }
+	)";
+	CHECK_SUCCESS_NO_WARNINGS(text);
+
+	text = R"(
+		pragma experimental "v0.5.0";
+		contract A { function A() public {} }
+	)";
+	CHECK_ERROR(text, SyntaxError, "Functions are not allowed to have the same name as the contract.");
+}
+
 BOOST_AUTO_TEST_CASE(implicit_derived_to_base_conversion)
 {
 	char const* text = R"(
