@@ -20,10 +20,13 @@
  * End to end tests for LLL.
  */
 
+#include <test/liblll/ExecutionFramework.h>
+#include <test/TestHelper.h>
+
+#include <boost/test/unit_test.hpp>
+
 #include <string>
 #include <memory>
-#include <boost/test/unit_test.hpp>
-#include <test/liblll/ExecutionFramework.h>
 
 using namespace std;
 
@@ -33,6 +36,12 @@ namespace lll
 {
 namespace test
 {
+
+boost::test_tools::assertion_result evmCanOverchargeGasForCall(boost::unit_test::test_unit_id)
+{
+  return dev::test::Options::get().evmVersion().canOverchargeGasForCall();
+}
+
 
 BOOST_FIXTURE_TEST_SUITE(LLLEndToEndTest, LLLExecutionFramework)
 
@@ -581,7 +590,9 @@ BOOST_AUTO_TEST_CASE(allgas)
 	BOOST_CHECK(callFallback() == encodeArgs(u256(16))); // == 21 - SUB - GAS
 }
 
-BOOST_AUTO_TEST_CASE(send_two_args)
+// "send" does not retain enough gas to be able to pay for account creation.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(send_two_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -592,7 +603,9 @@ BOOST_AUTO_TEST_CASE(send_two_args)
 	BOOST_CHECK(balanceAt(Address(0xdead)) == 42);
 }
 
-BOOST_AUTO_TEST_CASE(send_three_args)
+// "send" does not retain enough gas to be able to pay for account creation.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(send_three_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -706,7 +719,9 @@ BOOST_AUTO_TEST_CASE(msg_four_args)
 	BOOST_CHECK(callFallbackWithValue(42) == encodeArgs(u256(42)));
 }
 
-BOOST_AUTO_TEST_CASE(msg_three_args)
+// "msg" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(msg_three_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -719,7 +734,9 @@ BOOST_AUTO_TEST_CASE(msg_three_args)
 	BOOST_CHECK(callFallbackWithValue(42) == encodeArgs(u256(42)));
 }
 
-BOOST_AUTO_TEST_CASE(msg_two_args)
+// "msg" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(msg_two_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -732,7 +749,9 @@ BOOST_AUTO_TEST_CASE(msg_two_args)
 	BOOST_CHECK(callFallback() == encodeArgs(u256(42)));
 }
 
-BOOST_AUTO_TEST_CASE(create_one_arg)
+// "call" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(create_one_arg, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -746,7 +765,9 @@ BOOST_AUTO_TEST_CASE(create_one_arg)
 	BOOST_CHECK(callFallback() == encodeArgs(u256(42)));
 }
 
-BOOST_AUTO_TEST_CASE(create_two_args)
+// "call" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(create_two_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -820,7 +841,9 @@ BOOST_AUTO_TEST_CASE(makeperm) // Covers makeperm (implicit), permcount and perm
 	BOOST_CHECK(callFallback() == encodeArgs(u256(11)));
 }
 
-BOOST_AUTO_TEST_CASE(ecrecover)
+// "ecrecover" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(ecrecover, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -839,7 +862,9 @@ BOOST_AUTO_TEST_CASE(ecrecover)
 	BOOST_CHECK(callFallback() == encodeArgs(fromHex("0x8743523d96a1b2cbe0c6909653a56da18ed484af")));
 }
 
-BOOST_AUTO_TEST_CASE(sha256_two_args)
+// "sha256" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(sha256_two_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -854,7 +879,9 @@ BOOST_AUTO_TEST_CASE(sha256_two_args)
 		fromHex("0xcf25a9fe3d86ae228c226c81d2d8c64c687cd6dc4586d10d8e7e4e5b6706d429")));
 }
 
-BOOST_AUTO_TEST_CASE(ripemd160_two_args)
+// "ripemd160" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(ripemd160_two_args, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -869,7 +896,9 @@ BOOST_AUTO_TEST_CASE(ripemd160_two_args)
 		fromHex("0x36c6b90a49e17d4c1e1b0e634ec74124d9b207da")));
 }
 
-BOOST_AUTO_TEST_CASE(sha256_one_arg)
+// "sha256" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(sha256_one_arg, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
@@ -882,7 +911,9 @@ BOOST_AUTO_TEST_CASE(sha256_one_arg)
 		fromHex("0xcfd2f1fad75a1978da0a444883db7251414b139f31f5a04704c291fdb0e175e6")));
 }
 
-BOOST_AUTO_TEST_CASE(ripemd160_one_arg)
+// "ripemd160" does not retain enough gas.
+// Disabling for non-tangerineWhistle VMs.
+BOOST_AUTO_TEST_CASE(ripemd160_one_arg, *boost::unit_test::precondition(evmCanOverchargeGasForCall))
 {
 	char const* sourceCode = R"(
 		(returnlll
