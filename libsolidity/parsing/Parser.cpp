@@ -238,7 +238,10 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition(Token::Value _exp
 		Token::Value currentTokenValue = m_scanner->currentToken();
 		if (currentTokenValue == Token::RBrace)
 			break;
-		else if (currentTokenValue == Token::Function || currentTokenValue == Token::Constructor)
+		else if (
+			currentTokenValue == Token::Function ||
+			(currentTokenValue == Token::Identifier && m_scanner->currentLiteral() == "constructor")
+		)
 			// This can be a function or a state variable of function type (especially
 			// complicated to distinguish fallback function from function type state variable)
 			subNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable(name.get()));
@@ -336,7 +339,7 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _forceEmptyN
 
 	if (m_scanner->currentToken() == Token::Function)
 		result.isConstructor = false;
-	else if (m_scanner->currentToken() == Token::Constructor)
+	else if (m_scanner->currentToken() == Token::Identifier && m_scanner->currentLiteral() == "constructor")
 		result.isConstructor = true;
 	else
 		solAssert(false, "Function or constructor expected.");
