@@ -346,7 +346,7 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _forceEmptyN
 	m_scanner->next();
 
 	if (result.isConstructor || _forceEmptyName || m_scanner->currentToken() == Token::LParen)
-		result.name = make_shared<ASTString>(); // anonymous function
+		result.name = make_shared<ASTString>();
 	else
 		result.name = expectIdentifierToken();
 	VarDeclParserOptions options;
