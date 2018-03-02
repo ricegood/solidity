@@ -1187,7 +1187,7 @@ BOOST_AUTO_TEST_CASE(new_constructor_syntax)
 	char const* text = R"(
 		contract A { constructor() public {} }
 	)";
-	CHECK_WARNING(text, "The 'constructor' keyword is only introduced in version 0.5.0.");
+	CHECK_SUCCESS(text);
 
 	text = R"(
 		pragma experimental "v0.5.0";

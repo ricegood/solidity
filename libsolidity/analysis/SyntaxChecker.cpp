@@ -235,14 +235,6 @@ bool SyntaxChecker::visit(FunctionDefinition const& _function)
 		if (_function.isConstructor() && !_function.name().empty())
 			m_errorReporter.syntaxError(_function.location(), "Functions are not allowed to have the same name as the contract.");
 	}
-	else
-	{
-		if (_function.isConstructor() && _function.name().empty())
-			m_errorReporter.warning(
-				_function.location(),
-				"The 'constructor' keyword is only introduced in version 0.5.0."
-			);
-	}
 	return true;
 }
 
