@@ -23,7 +23,6 @@
 #include <libsolidity/analysis/DeclarationContainer.h>
 #include <libsolidity/ast/AST.h>
 #include <libsolidity/ast/Types.h>
-#include <libdevcore/StringUtils.h>
 
 using namespace std;
 using namespace dev;
@@ -34,6 +33,9 @@ Declaration const* DeclarationContainer::conflictingDeclaration(
 	ASTString const* _name
 ) const
 {
+	// DEBUG //
+	std::cout << "Declaration Container!" <<endl;
+	///////////
 	if (!_name)
 		_name = &_declaration.name();
 	solAssert(!_name->empty(), "");
@@ -79,17 +81,6 @@ Declaration const* DeclarationContainer::conflictingDeclaration(
 	return nullptr;
 }
 
-void DeclarationContainer::activateVariable(ASTString const& _name)
-{
-	solAssert(
-		m_invisibleDeclarations.count(_name) && m_invisibleDeclarations.at(_name).size() == 1,
-		"Tried to activate a non-inactive variable or multiple inactive variables with the same name."
-	);
-	solAssert(m_declarations.count(_name) == 0 || m_declarations.at(_name).empty(), "");
-	m_declarations[_name].emplace_back(m_invisibleDeclarations.at(_name).front());
-	m_invisibleDeclarations.erase(_name);
-}
-
 bool DeclarationContainer::registerDeclaration(
 	Declaration const& _declaration,
 	ASTString const* _name,
@@ -117,40 +108,13 @@ bool DeclarationContainer::registerDeclaration(
 	return true;
 }
 
-vector<Declaration const*> DeclarationContainer::resolveName(ASTString const& _name, bool _recursive, bool _alsoInvisible) const
+std::vector<Declaration const*> DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
 {
 	solAssert(!_name.empty(), "Attempt to resolve empty name.");
-	vector<Declaration const*> result;
-	if (m_declarations.count(_name))
-		result = m_declarations.at(_name);
-	if (_alsoInvisible && m_invisibleDeclarations.count(_name))
-		result += m_invisibleDeclarations.at(_name);
-	if (result.empty() && _recursive && m_enclosingContainer)
-		result = m_enclosingContainer->resolveName(_name, true, _alsoInvisible);
-	return result;
-}
-
-vector<ASTString> DeclarationContainer::similarNames(ASTString const& _name) const
-{
-	static size_t const MAXIMUM_EDIT_DISTANCE = 2;
-
-	vector<ASTString> similar;
-
-	for (auto const& declaration: m_declarations)
-	{
-		string const& declarationName = declaration.first;
-		if (stringWithinDistance(_name, declarationName, MAXIMUM_EDIT_DISTANCE))
-			similar.push_back(declarationName);
-	}
-	for (auto const& declaration: m_invisibleDeclarations)
-	{
-		string const& declarationName = declaration.first;
-		if (stringWithinDistance(_name, declarationName, MAXIMUM_EDIT_DISTANCE))
-			similar.push_back(declarationName);
-	}
-
-	if (m_enclosingContainer)
-		similar += m_enclosingContainer->similarNames(_name);
-
-	return similar;
+	auto result = m_declarations.find(_name);
+	if (result != m_declarations.end())
+		return result->second;
+	if (_recursive && m_enclosingContainer)
+		return m_enclosingContainer->resolveName(_name, true);
+	return vector<Declaration const*>({});
 }

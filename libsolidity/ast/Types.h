@@ -163,20 +163,10 @@ public:
 	/// @returns a valid solidity identifier such that two types should compare equal if and
 	/// only if they have the same identifier.
 	/// The identifier should start with "t_".
-	/// Can contain characters which are invalid in identifiers.
-	virtual std::string richIdentifier() const = 0;
-	/// @returns a valid solidity identifier such that two types should compare equal if and
-	/// only if they have the same identifier.
-	/// The identifier should start with "t_".
-	/// Will not contain any character which would be invalid as an identifier.
-	std::string identifier() const { return escapeIdentifier(richIdentifier()); }
-
 	/// More complex identifier strings use "parentheses", where $_ is interpreted as as
 	/// "opening parenthesis", _$ as "closing parenthesis", _$_ as "comma" and any $ that
 	/// appears as part of a user-supplied identifier is escaped as _$$$_.
-	/// @returns an escaped identifier (will not contain any parenthesis or commas)
-	static std::string escapeIdentifier(std::string const& _identifier);
-
+	virtual std::string identifier() const = 0;
 	virtual bool isImplicitlyConvertibleTo(Type const& _other) const { return *this == _other; }
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const
 	{
@@ -316,7 +306,7 @@ public:
 
 	explicit IntegerType(int _bits, Modifier _modifier = Modifier::Unsigned);
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
@@ -363,7 +353,7 @@ public:
 
 	explicit FixedPointType(int _totalBits, int _fractionalDigits, Modifier _modifier = Modifier::Unsigned);
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
@@ -420,7 +410,7 @@ public:
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 
 	virtual bool canBeStored() const override { return false; }
@@ -447,10 +437,6 @@ private:
 
 	/// @returns true if the literal is a valid rational number.
 	static std::tuple<bool, rational> parseRational(std::string const& _value);
-
-	/// @returns a truncated readable representation of the bigint keeping only
-	/// up to 4 leading and 4 trailing digits.
-	static std::string bigintToReadableString(dev::bigint const& num);
 };
 
 /**
@@ -469,7 +455,7 @@ public:
 		return TypePointer();
 	}
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 
 	virtual bool canBeStored() const override { return false; }
@@ -503,7 +489,7 @@ public:
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
@@ -531,7 +517,7 @@ class BoolType: public Type
 public:
 	BoolType() {}
 	virtual Category category() const override { return Category::Bool; }
-	virtual std::string richIdentifier() const override { return "t_bool"; }
+	virtual std::string identifier() const override { return "t_bool"; }
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
 
@@ -631,7 +617,7 @@ public:
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(const Type& _other) const override;
 	virtual unsigned calldataEncodedSize(bool _padded) const override;
 	virtual bool isDynamicallySized() const override { return m_hasDynamicLength; }
@@ -688,7 +674,7 @@ public:
 	/// Contracts can be converted to themselves and to integers.
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual unsigned calldataEncodedSize(bool _padded ) const override
 	{
@@ -746,7 +732,7 @@ public:
 	explicit StructType(StructDefinition const& _struct, DataLocation _location = DataLocation::Storage):
 		ReferenceType(_location), m_struct(_struct) {}
 	virtual bool isImplicitlyConvertibleTo(const Type& _convertTo) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual unsigned calldataEncodedSize(bool _padded) const override;
 	virtual bool isDynamicallyEncoded() const override;
@@ -801,7 +787,7 @@ public:
 	virtual Category category() const override { return Category::Enum; }
 	explicit EnumType(EnumDefinition const& _enum): m_enum(_enum) {}
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual unsigned calldataEncodedSize(bool _padded) const override
 	{
@@ -842,7 +828,7 @@ public:
 	virtual Category category() const override { return Category::Tuple; }
 	explicit TupleType(std::vector<TypePointer> const& _types = std::vector<TypePointer>()): m_components(_types) {}
 	virtual bool isImplicitlyConvertibleTo(Type const& _other) const override;
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }
 	virtual std::string toString(bool) const override;
@@ -976,7 +962,7 @@ public:
 	/// @returns the "self" parameter type for a bound function
 	TypePointer const& selfType() const;
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
@@ -1080,7 +1066,7 @@ public:
 	MappingType(TypePointer const& _keyType, TypePointer const& _valueType):
 		m_keyType(_keyType), m_valueType(_valueType) {}
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString(bool _short) const override;
 	virtual std::string canonicalName() const override;
@@ -1117,7 +1103,7 @@ public:
 	TypePointer const& actualType() const { return m_actualType; }
 
 	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual u256 storageSize() const override;
@@ -1145,7 +1131,7 @@ public:
 	virtual u256 storageSize() const override;
 	virtual bool canLiveOutsideStorage() const override { return false; }
 	virtual unsigned sizeOnStack() const override { return 0; }
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual std::string toString(bool _short) const override;
 
@@ -1166,7 +1152,7 @@ public:
 	explicit ModuleType(SourceUnit const& _source): m_sourceUnit(_source) {}
 
 	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual bool canLiveOutsideStorage() const override { return true; }
@@ -1196,7 +1182,7 @@ public:
 		return TypePointer();
 	}
 
-	virtual std::string richIdentifier() const override;
+	virtual std::string identifier() const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual bool canLiveOutsideStorage() const override { return true; }
@@ -1220,7 +1206,7 @@ class InaccessibleDynamicType: public Type
 public:
 	virtual Category category() const override { return Category::InaccessibleDynamic; }
 
-	virtual std::string richIdentifier() const override { return "t_inaccessible"; }
+	virtual std::string identifier() const override { return "t_inaccessible"; }
 	virtual bool isImplicitlyConvertibleTo(Type const&) const override { return false; }
 	virtual bool isExplicitlyConvertibleTo(Type const&) const override { return false; }
 	virtual TypePointer binaryOperatorResult(Token::Value, TypePointer const&) const override { return TypePointer(); }

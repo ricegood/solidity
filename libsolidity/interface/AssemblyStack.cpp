@@ -38,25 +38,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::solidity;
 
-namespace
-{
-assembly::AsmFlavour languageToAsmFlavour(AssemblyStack::Language _language)
-{
-	switch (_language)
-	{
-	case AssemblyStack::Language::Assembly:
-		return assembly::AsmFlavour::Loose;
-	case AssemblyStack::Language::StrictAssembly:
-		return assembly::AsmFlavour::Strict;
-	case AssemblyStack::Language::JULIA:
-		return assembly::AsmFlavour::IULIA;
-	}
-	solAssert(false, "");
-	return assembly::AsmFlavour::IULIA;
-}
-
-}
-
 
 Scanner const& AssemblyStack::scanner() const
 {
@@ -69,7 +50,7 @@ bool AssemblyStack::parseAndAnalyze(std::string const& _sourceName, std::string 
 	m_errors.clear();
 	m_analysisSuccessful = false;
 	m_scanner = make_shared<Scanner>(CharStream(_source), _sourceName);
-	m_parserResult = assembly::Parser(m_errorReporter, languageToAsmFlavour(m_language)).parse(m_scanner, false);
+	m_parserResult = assembly::Parser(m_errorReporter, m_language == Language::JULIA).parse(m_scanner);
 	if (!m_errorReporter.errors().empty())
 		return false;
 	solAssert(m_parserResult, "");
@@ -91,7 +72,7 @@ bool AssemblyStack::analyze(assembly::Block const& _block, Scanner const* _scann
 bool AssemblyStack::analyzeParsed()
 {
 	m_analysisInfo = make_shared<assembly::AsmAnalysisInfo>();
-	assembly::AsmAnalyzer analyzer(*m_analysisInfo, m_errorReporter, languageToAsmFlavour(m_language));
+	assembly::AsmAnalyzer analyzer(*m_analysisInfo, m_errorReporter, m_language == Language::JULIA);
 	m_analysisSuccessful = analyzer.analyze(*m_parserResult);
 	return m_analysisSuccessful;
 }

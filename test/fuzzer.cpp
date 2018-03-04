@@ -18,12 +18,11 @@
  * Executable for use with AFL <http://lcamtuf.coredump.cx/afl>.
  */
 
-#include <libdevcore/CommonIO.h>
 #include <libevmasm/Assembly.h>
 #include <libevmasm/ConstantOptimiser.h>
 #include <libsolc/libsolc.h>
 
-#include <libdevcore/JSON.h>
+#include <json/json.h>
 
 #include <boost/program_options.hpp>
 
@@ -83,15 +82,26 @@ void testConstantOptimizer()
 	}
 }
 
+string readInput()
+{
+	string input;
+	while (!cin.eof())
+	{
+		string s;
+		getline(cin, s);
+		input += s + '\n';
+	}
+	return input;
+}
+
 void testStandardCompiler()
 {
 	if (!quiet)
 		cout << "Testing compiler via JSON interface." << endl;
-	string input = readStandardInput();
-
+	string input = readInput();
 	string outputString(compileStandard(input.c_str(), NULL));
 	Json::Value output;
-	if (!jsonParseStrict(outputString, output))
+	if (!Json::Reader().parse(outputString, output))
 	{
 		cout << "Compiler produced invalid JSON output." << endl;
 		abort();
@@ -115,11 +125,11 @@ void testCompiler(bool optimize)
 {
 	if (!quiet)
 		cout << "Testing compiler " << (optimize ? "with" : "without") << " optimizer." << endl;
-	string input = readStandardInput();
+	string input = readInput();
 
 	string outputString(compileJSON(input.c_str(), optimize));
 	Json::Value outputJson;
-	if (!jsonParseStrict(outputString, outputJson))
+	if (!Json::Reader().parse(outputString, outputJson))
 	{
 		cout << "Compiler produced invalid JSON output." << endl;
 		abort();

@@ -35,8 +35,14 @@ namespace test
 
 class SMTCheckerFramework: public AnalysisFramework
 {
+public:
+	SMTCheckerFramework()
+	{
+		m_warningsToFilter.push_back("Experimental features are turned on.");
+	}
+
 protected:
-	virtual std::pair<SourceUnit const*, ErrorList>
+	virtual std::pair<SourceUnit const*, std::shared_ptr<Error const>>
 	parseAnalyseAndReturnError(
 		std::string const& _source,
 		bool _reportWarnings = false,
@@ -96,11 +102,8 @@ BOOST_AUTO_TEST_CASE(warn_on_struct)
 			}
 		}
 	)";
-	CHECK_WARNING_ALLOW_MULTI(text, (vector<string>{
-		"Experimental feature",
-		"Assertion checker does not yet implement this expression.",
-		"Assertion checker does not yet support the type of this variable."
-	}));
+	/// Multiple warnings, should check for: Assertion checker does not yet implement this expression.
+	CHECK_WARNING_ALLOW_MULTI(text, "");
 }
 
 BOOST_AUTO_TEST_CASE(simple_assert)
@@ -165,9 +168,9 @@ BOOST_AUTO_TEST_CASE(function_call_does_not_clear_local_vars)
 	CHECK_SUCCESS_NO_WARNINGS(text);
 }
 
-BOOST_AUTO_TEST_CASE(branches_merge_variables)
+BOOST_AUTO_TEST_CASE(branches_clear_variables)
 {
-	// Branch does not touch variable a
+	// Only clears accessed variables
 	string text = R"(
 		contract C {
 			function f(uint x) public pure {
@@ -179,7 +182,7 @@ BOOST_AUTO_TEST_CASE(branches_merge_variables)
 		}
 	)";
 	CHECK_SUCCESS_NO_WARNINGS(text);
-	// Positive branch touches variable a, but assertion should still hold.
+	// It is just a plain clear and will not combine branches.
 	text = R"(
 	contract C {
 			function f(uint x) public pure {
@@ -191,8 +194,8 @@ BOOST_AUTO_TEST_CASE(branches_merge_variables)
 			}
 		}
 	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-	// Negative branch touches variable a, but assertion should still hold.
+	CHECK_WARNING(text, "Assertion violation happens here");
+	// Clear also works on the else branch
 	text = R"(
 		contract C {
 			function f(uint x) public pure {
@@ -205,8 +208,8 @@ BOOST_AUTO_TEST_CASE(branches_merge_variables)
 			}
 		}
 	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-	// Variable is not merged, if it is only read.
+	CHECK_WARNING(text, "Assertion violation happens here");
+	// Variable is not cleared, if it is only read.
 	text = R"(
 		contract C {
 			function f(uint x) public pure {
@@ -217,36 +220,6 @@ BOOST_AUTO_TEST_CASE(branches_merge_variables)
 					assert(a == 3);
 				}
 				assert(a == 3);
-			}
-		}
-	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-	// Variable is reset in both branches
-	text = R"(
-		contract C {
-			function f(uint x) public pure {
-				uint a = 2;
-				if (x > 10) {
-					a = 3;
-				} else {
-					a = 3;
-				}
-				assert(a == 3);
-			}
-		}
-	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-	// Variable is reset in both branches
-	text = R"(
-		contract C {
-			function f(uint x) public pure {
-				uint a = 2;
-				if (x > 10) {
-					a = 3;
-				} else {
-					a = 4;
-				}
-				assert(a >= 3);
 			}
 		}
 	)";
@@ -289,7 +262,7 @@ BOOST_AUTO_TEST_CASE(branches_assert_condition)
 	CHECK_SUCCESS_NO_WARNINGS(text);
 }
 
-BOOST_AUTO_TEST_CASE(ways_to_merge_variables)
+BOOST_AUTO_TEST_CASE(ways_to_clear_variables)
 {
 	string text = R"(
 		contract C {
@@ -302,7 +275,6 @@ BOOST_AUTO_TEST_CASE(ways_to_merge_variables)
 			}
 		}
 	)";
-	CHECK_WARNING(text, "Assertion violation happens here");
 	text = R"(
 		contract C {
 			function f(uint x) public pure {
@@ -466,8 +438,7 @@ BOOST_AUTO_TEST_CASE(for_loop)
 	text = R"(
 		contract C {
 			function f(uint x) public pure {
-				uint y;
-				for (y = 2; x < 10; ) {
+				for (uint y = 2; x < 10; ) {
 					y = 3;
 				}
 				assert(y == 3);
@@ -478,8 +449,7 @@ BOOST_AUTO_TEST_CASE(for_loop)
 	text = R"(
 		contract C {
 			function f(uint x) public pure {
-				uint y;
-				for (y = 2; x < 10; ) {
+				for (uint y = 2; x < 10; ) {
 					y = 3;
 				}
 				assert(y == 2);

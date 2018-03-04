@@ -104,7 +104,6 @@ private:
 	ASTPointer<WhileStatement> parseWhileStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<WhileStatement> parseDoWhileStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<ForStatement> parseForStatement(ASTPointer<ASTString> const& _docString);
-	ASTPointer<EmitStatement> parseEmitStatement(ASTPointer<ASTString> const& docString);
 	/// A "simple statement" can be a variable declaration statement or an expression statement.
 	ASTPointer<Statement> parseSimpleStatement(ASTPointer<ASTString> const& _docString);
 	ASTPointer<VariableDeclarationStatement> parseVariableDeclarationStatement(
@@ -167,6 +166,25 @@ private:
 
 	/// Flag that signifies whether '_' is parsed as a PlaceholderStatement or a regular identifier.
 	bool m_insideModifier = false;
+
+	// DEBUG //
+	void resetMyOptimization();
+	void resetMyOptimizationForFunction();
+	void checkFunctionForOptimize();
+
+	bool myOptimization = false;
+
+	bool isContractVariableDeclaration = false;
+	bool isFunctionVariableDeclaration = false;
+	bool isElementaryTypeForOptimize = false;
+
+	std::map<std::string, unsigned int> numOfLoad;
+	std::map<std::string, unsigned int> numOfStore;
+
+	std::map<std::string, bool> isOptimized;
+	std::map<std::string, bool> isOptimizingDeclared;
+	std::string nowVarID = "";
+	///////////
 };
 
 }

@@ -203,7 +203,7 @@ string compile(StringMap const& _sources, bool _optimize, CStyleReadFileCallback
 			{
 				Json::Value contractInput = ret["contracts"][sourceName][contractName];
 				Json::Value contractOutput = Json::objectValue;
-				contractOutput["interface"] = jsonCompactPrint(contractInput["abi"]);
+				contractOutput["interface"] = dev::jsonCompactPrint(contractInput["abi"]);
 				contractOutput["metadata"] = contractInput["metadata"];
 				contractOutput["functionHashes"] = contractInput["evm"]["methodIdentifiers"];
 				contractOutput["gasEstimates"] = translateGasEstimates(contractInput["evm"]["gasEstimates"]);
@@ -219,7 +219,7 @@ string compile(StringMap const& _sources, bool _optimize, CStyleReadFileCallback
 
 	try
 	{
-		return jsonCompactPrint(output);
+		return dev::jsonCompactPrint(output);
 	}
 	catch (...)
 	{
@@ -229,15 +229,15 @@ string compile(StringMap const& _sources, bool _optimize, CStyleReadFileCallback
 
 string compileMulti(string const& _input, bool _optimize, CStyleReadFileCallback _readCallback = nullptr)
 {
-	string errors;
+	Json::Reader reader;
 	Json::Value input;
-	if (!jsonParseStrict(_input, input, &errors))
+	if (!reader.parse(_input, input, false))
 	{
-		Json::Value jsonErrors(Json::arrayValue);
-		jsonErrors.append("Error parsing input JSON: " + errors);
+		Json::Value errors(Json::arrayValue);
+		errors.append("Error parsing input JSON: " + reader.getFormattedErrorMessages());
 		Json::Value output(Json::objectValue);
-		output["errors"] = jsonErrors;
-		return jsonCompactPrint(output);
+		output["errors"] = errors;
+		return dev::jsonCompactPrint(output);
 	}
 	else
 	{

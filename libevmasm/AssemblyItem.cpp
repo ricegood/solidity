@@ -68,7 +68,6 @@ unsigned AssemblyItem::bytesRequired(unsigned _addressLength) const
 	case PushSub:
 		return 1 + _addressLength;
 	case PushLibraryAddress:
-	case PushDeployTimeAddress:
 		return 1 + 20;
 	default:
 		break;
@@ -98,7 +97,6 @@ int AssemblyItem::returnValues() const
 	case PushSubSize:
 	case PushProgramSize:
 	case PushLibraryAddress:
-	case PushDeployTimeAddress:
 		return 1;
 	case Tag:
 		return 0;
@@ -121,7 +119,6 @@ bool AssemblyItem::canBeFunctional() const
 	case PushSubSize:
 	case PushProgramSize:
 	case PushLibraryAddress:
-	case PushDeployTimeAddress:
 		return true;
 	case Tag:
 		return false;
@@ -193,9 +190,6 @@ string AssemblyItem::toAssemblyText() const
 	case PushLibraryAddress:
 		text = string("linkerSymbol(\"") + toHex(data()) + string("\")");
 		break;
-	case PushDeployTimeAddress:
-		text = string("deployTimeAddress()");
-		break;
 	case UndefinedItem:
 		assertThrow(false, AssemblyException, "Invalid assembly item.");
 		break;
@@ -258,9 +252,6 @@ ostream& dev::eth::operator<<(ostream& _out, AssemblyItem const& _item)
 		_out << " PushLibraryAddress " << hash.substr(0, 8) + "..." + hash.substr(hash.length() - 8);
 		break;
 	}
-	case PushDeployTimeAddress:
-		_out << " PushDeployTimeAddress";
-		break;
 	case UndefinedItem:
 		_out << " ???";
 		break;

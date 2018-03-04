@@ -25,7 +25,6 @@
 #include <libsolidity/ast/AST.h>
 #include <libsolidity/analysis/TypeChecker.h>
 #include <libsolidity/interface/ErrorReporter.h>
-#include <libdevcore/StringUtils.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -50,13 +49,12 @@ NameAndTypeResolver::NameAndTypeResolver(
 		m_scopes[nullptr]->registerDeclaration(*declaration);
 }
 
-bool NameAndTypeResolver::registerDeclarations(SourceUnit& _sourceUnit, ASTNode const* _currentScope)
+bool NameAndTypeResolver::registerDeclarations(ASTNode& _sourceUnit, ASTNode const* _currentScope)
 {
-	bool useC99Scoping = _sourceUnit.annotation().experimentalFeatures.count(ExperimentalFeature::V050);
 	// The helper registers all declarations in m_scopes as a side-effect of its construction.
 	try
 	{
-		DeclarationRegistrationHelper registrar(m_scopes, _sourceUnit, useC99Scoping, m_errorReporter, _currentScope);
+		DeclarationRegistrationHelper registrar(m_scopes, _sourceUnit, m_errorReporter, _currentScope);
 	}
 	catch (FatalError const&)
 	{
@@ -107,7 +105,7 @@ bool NameAndTypeResolver::performImports(SourceUnit& _sourceUnit, map<string, So
 					else
 						for (Declaration const* declaration: declarations)
 							if (!DeclarationRegistrationHelper::registerDeclaration(
-								target, *declaration, alias.second.get(), &imp->location(), true, false, m_errorReporter
+								target, *declaration, alias.second.get(), &imp->location(), true, m_errorReporter
 							))
 								error = true;
 				}
@@ -115,7 +113,7 @@ bool NameAndTypeResolver::performImports(SourceUnit& _sourceUnit, map<string, So
 				for (auto const& nameAndDeclaration: scope->second->declarations())
 					for (auto const& declaration: nameAndDeclaration.second)
 						if (!DeclarationRegistrationHelper::registerDeclaration(
-							target, *declaration, &nameAndDeclaration.first, &imp->location(), true, false, m_errorReporter
+							target, *declaration, &nameAndDeclaration.first, &imp->location(), true, m_errorReporter
 						))
 							error =  true;
 		}
@@ -152,12 +150,6 @@ bool NameAndTypeResolver::updateDeclaration(Declaration const& _declaration)
 	return true;
 }
 
-void NameAndTypeResolver::activateVariable(string const& _name)
-{
-	solAssert(m_currentScope, "");
-	m_currentScope->activateVariable(_name);
-}
-
 vector<Declaration const*> NameAndTypeResolver::resolveName(ASTString const& _name, ASTNode const* _scope) const
 {
 	auto iterator = m_scopes.find(_scope);
@@ -166,15 +158,15 @@ vector<Declaration const*> NameAndTypeResolver::resolveName(ASTString const& _na
 	return iterator->second->resolveName(_name, false);
 }
 
-vector<Declaration const*> NameAndTypeResolver::nameFromCurrentScope(ASTString const& _name, bool _includeInvisibles) const
+vector<Declaration const*> NameAndTypeResolver::nameFromCurrentScope(ASTString const& _name, bool _recursive) const
 {
-	return m_currentScope->resolveName(_name, true, _includeInvisibles);
+	return m_currentScope->resolveName(_name, _recursive);
 }
 
-Declaration const* NameAndTypeResolver::pathFromCurrentScope(vector<ASTString> const& _path) const
+Declaration const* NameAndTypeResolver::pathFromCurrentScope(vector<ASTString> const& _path, bool _recursive) const
 {
 	solAssert(!_path.empty(), "");
-	vector<Declaration const*> candidates = m_currentScope->resolveName(_path.front(), true);
+	vector<Declaration const*> candidates = m_currentScope->resolveName(_path.front(), _recursive);
 	for (size_t i = 1; i < _path.size() && candidates.size() == 1; i++)
 	{
 		if (!m_scopes.count(candidates.front()))
@@ -236,7 +228,7 @@ void NameAndTypeResolver::warnVariablesNamedLikeInstructions()
 	for (auto const& instruction: c_instructions)
 	{
 		string const instructionName{boost::algorithm::to_lower_copy(instruction.first)};
-		auto declarations = nameFromCurrentScope(instructionName, true);
+		auto declarations = nameFromCurrentScope(instructionName);
 		for (Declaration const* const declaration: declarations)
 		{
 			solAssert(!!declaration, "");
@@ -251,24 +243,31 @@ void NameAndTypeResolver::warnVariablesNamedLikeInstructions()
 	}
 }
 
-void NameAndTypeResolver::setScope(ASTNode const* _node)
-{
-	m_currentScope = m_scopes[_node].get();
-}
-
 bool NameAndTypeResolver::resolveNamesAndTypesInternal(ASTNode& _node, bool _resolveInsideCode)
 {
+	// DEBUG //
+	std::cout << "resolveNamesAndTypesInternal" << endl;
+	///////////
+
 	if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(&_node))
 	{
 		bool success = true;
-		setScope(contract->scope());
+		m_currentScope = m_scopes[contract->scope()].get();
 		solAssert(!!m_currentScope, "");
 
-		for (ASTPointer<InheritanceSpecifier> const& baseContract: contract->baseContracts())
+		for (ASTPointer<InheritanceSpecifier> const& baseContract: contract->baseContracts()){
+			// DEBUG //
+			std::cout << "=====baseContracts resolve=====" << endl;
+			///////////
 			if (!resolveNamesAndTypes(*baseContract, true))
 				success = false;
 
-		setScope(contract);
+			// DEBUG //
+			std::cout << "@@ baseContracts check : " << success << endl;
+			///////////
+		}
+
+		m_currentScope = m_scopes[contract].get();
 
 		if (success)
 		{
@@ -285,13 +284,26 @@ bool NameAndTypeResolver::resolveNamesAndTypesInternal(ASTNode& _node, bool _res
 		// these can contain code, only resolve parameters for now
 		for (ASTPointer<ASTNode> const& node: contract->subNodes())
 		{
-			setScope(contract);
+			// DEBUG //
+			std::cout << "=====parameter resolve=====" << endl;
+			///////////
+
+			m_currentScope = m_scopes[contract].get();
 			if (!resolveNamesAndTypes(*node, false))
 			{
 				success = false;
 				break;
 			}
+
+			// DEBUG //
+			std::cout << "@@ parameter check : " << success << endl;
+			///////////
 		}
+
+		// DEBUG //
+		std::cout << "@@ parameter check : " << success << endl;
+		///////////
+
 
 		if (!success)
 			return false;
@@ -299,21 +311,29 @@ bool NameAndTypeResolver::resolveNamesAndTypesInternal(ASTNode& _node, bool _res
 		if (!_resolveInsideCode)
 			return success;
 
-		setScope(contract);
+		m_currentScope = m_scopes[contract].get();
 
 		// now resolve references inside the code
 		for (ASTPointer<ASTNode> const& node: contract->subNodes())
 		{
-			setScope(contract);
+			// DEBUG //
+			std::cout << "=====inside resolve=====" << endl;
+			///////////
+
+			m_currentScope = m_scopes[contract].get();
 			if (!resolveNamesAndTypes(*node, true))
 				success = false;
+
+			// DEBUG //
+			std::cout << "@@ inside check:" << success << endl;
+			///////////
 		}
 		return success;
 	}
 	else
 	{
 		if (m_scopes.count(&_node))
-			setScope(&_node);
+			m_currentScope = m_scopes[&_node].get();
 		return ReferencesResolver(m_errorReporter, *this, _resolveInsideCode).resolve(_node);
 	}
 }
@@ -438,19 +458,12 @@ vector<_T const*> NameAndTypeResolver::cThreeMerge(list<list<_T const*>>& _toMer
 	return result;
 }
 
-string NameAndTypeResolver::similarNameSuggestions(ASTString const& _name) const
-{
-	return quotedAlternativesList(m_currentScope->similarNames(_name));
-}
-
 DeclarationRegistrationHelper::DeclarationRegistrationHelper(
 	map<ASTNode const*, shared_ptr<DeclarationContainer>>& _scopes,
 	ASTNode& _astRoot,
-	bool _useC99Scoping,
 	ErrorReporter& _errorReporter,
 	ASTNode const* _currentScope
 ):
-	m_useC99Scoping(_useC99Scoping),
 	m_scopes(_scopes),
 	m_currentScope(_currentScope),
 	m_errorReporter(_errorReporter)
@@ -465,23 +478,18 @@ bool DeclarationRegistrationHelper::registerDeclaration(
 	string const* _name,
 	SourceLocation const* _errorLocation,
 	bool _warnOnShadow,
-	bool _inactive,
 	ErrorReporter& _errorReporter
 )
 {
 	if (!_errorLocation)
 		_errorLocation = &_declaration.location();
 
-	string name = _name ? *_name : _declaration.name();
 	Declaration const* shadowedDeclaration = nullptr;
-	if (_warnOnShadow && !name.empty() && _container.enclosingContainer())
-		for (auto const* decl: _container.enclosingContainer()->resolveName(name, true, true))
+	if (_warnOnShadow && !_declaration.name().empty() && _container.enclosingContainer())
+		for (auto const* decl: _container.enclosingContainer()->resolveName(_declaration.name(), true))
 			shadowedDeclaration = decl;
 
-	// We use "invisible" for both inactive variables in blocks and for members invisible in contracts.
-	// They cannot both be true at the same time.
-	solAssert(!(_inactive && !_declaration.isVisibleInContract()), "");
-	if (!_container.registerDeclaration(_declaration, _name, !_declaration.isVisibleInContract() || _inactive))
+	if (!_container.registerDeclaration(_declaration, _name, !_declaration.isVisibleInContract()))
 	{
 		SourceLocation firstDeclarationLocation;
 		SourceLocation secondDeclarationLocation;
@@ -623,34 +631,6 @@ void DeclarationRegistrationHelper::endVisit(ModifierDefinition&)
 	closeCurrentScope();
 }
 
-bool DeclarationRegistrationHelper::visit(Block& _block)
-{
-	_block.setScope(m_currentScope);
-	if (m_useC99Scoping)
-		enterNewSubScope(_block);
-	return true;
-}
-
-void DeclarationRegistrationHelper::endVisit(Block&)
-{
-	if (m_useC99Scoping)
-		closeCurrentScope();
-}
-
-bool DeclarationRegistrationHelper::visit(ForStatement& _for)
-{
-	_for.setScope(m_currentScope);
-	if (m_useC99Scoping)
-		enterNewSubScope(_for);
-	return true;
-}
-
-void DeclarationRegistrationHelper::endVisit(ForStatement&)
-{
-	if (m_useC99Scoping)
-		closeCurrentScope();
-}
-
 void DeclarationRegistrationHelper::endVisit(VariableDeclarationStatement& _variableDeclarationStatement)
 {
 	// Register the local variables with the function
@@ -678,14 +658,14 @@ void DeclarationRegistrationHelper::endVisit(EventDefinition&)
 	closeCurrentScope();
 }
 
-void DeclarationRegistrationHelper::enterNewSubScope(ASTNode& _subScope)
+void DeclarationRegistrationHelper::enterNewSubScope(Declaration const& _declaration)
 {
 	map<ASTNode const*, shared_ptr<DeclarationContainer>>::iterator iter;
 	bool newlyAdded;
 	shared_ptr<DeclarationContainer> container(new DeclarationContainer(m_currentScope, m_scopes[m_currentScope].get()));
-	tie(iter, newlyAdded) = m_scopes.emplace(&_subScope, move(container));
+	tie(iter, newlyAdded) = m_scopes.emplace(&_declaration, move(container));
 	solAssert(newlyAdded, "Unable to add new scope.");
-	m_currentScope = &_subScope;
+	m_currentScope = &_declaration;
 }
 
 void DeclarationRegistrationHelper::closeCurrentScope()
@@ -713,12 +693,7 @@ void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaratio
 		if (fun->isConstructor())
 			warnAboutShadowing = false;
 
-	// Register declaration as inactive if we are in block scope and C99 mode.
-	bool inactive =
-		m_useC99Scoping &&
-		(dynamic_cast<Block const*>(m_currentScope) || dynamic_cast<ForStatement const*>(m_currentScope));
-
-	registerDeclaration(*m_scopes[m_currentScope], _declaration, nullptr, nullptr, warnAboutShadowing, inactive, m_errorReporter);
+	registerDeclaration(*m_scopes[m_currentScope], _declaration, nullptr, nullptr, warnAboutShadowing, m_errorReporter);
 
 	_declaration.setScope(m_currentScope);
 	if (_opensScope)

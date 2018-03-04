@@ -108,7 +108,8 @@ public:
 private:
 	/// Tries to simplify the given expression.
 	/// @returns its class if it possible or Id(-1) otherwise.
-	Id tryToSimplify(Expression const& _expr);
+	/// @param _secondRun is set to true for the second run where arguments of commutative expressions are reversed
+	Id tryToSimplify(Expression const& _expr, bool _secondRun = false);
 
 	/// Rebuilds an expression from a (matched) pattern.
 	Id rebuildExpression(ExpressionTemplate const& _template);

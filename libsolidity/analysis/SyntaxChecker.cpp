@@ -93,10 +93,8 @@ bool SyntaxChecker::visit(PragmaDirective const& _pragma)
 				m_errorReporter.syntaxError(_pragma.location(), "Duplicate experimental feature name.");
 			else
 			{
-				auto feature = ExperimentalFeatureNames.at(literal);
-				m_sourceUnit->annotation().experimentalFeatures.insert(feature);
-				if (!ExperimentalFeatureOnlyAnalysis.count(feature))
-					m_errorReporter.warning(_pragma.location(), "Experimental features are turned on. Do not use experimental features on live deployments.");
+				m_sourceUnit->annotation().experimentalFeatures.insert(ExperimentalFeatureNames.at(literal));
+				m_errorReporter.warning(_pragma.location(), "Experimental features are turned on. Do not use experimental features on live deployments.");
 			}
 		}
 	}
@@ -174,18 +172,10 @@ bool SyntaxChecker::visit(Break const& _breakStatement)
 
 bool SyntaxChecker::visit(Throw const& _throwStatement)
 {
-	bool const v050 = m_sourceUnit->annotation().experimentalFeatures.count(ExperimentalFeature::V050);
-
-	if (v050)
-		m_errorReporter.syntaxError(
-			_throwStatement.location(),
-			"\"throw\" is deprecated in favour of \"revert()\", \"require()\" and \"assert()\"."
-		);
-	else
-		m_errorReporter.warning(
-			_throwStatement.location(),
-			"\"throw\" is deprecated in favour of \"revert()\", \"require()\" and \"assert()\"."
-		);
+	m_errorReporter.warning(
+		_throwStatement.location(),
+		"\"throw\" is deprecated in favour of \"revert()\", \"require()\" and \"assert()\"."
+	);
 
 	return true;
 }
@@ -212,20 +202,13 @@ bool SyntaxChecker::visit(PlaceholderStatement const&)
 
 bool SyntaxChecker::visit(FunctionDefinition const& _function)
 {
-	bool const v050 = m_sourceUnit->annotation().experimentalFeatures.count(ExperimentalFeature::V050);
-
 	if (_function.noVisibilitySpecified())
-	{
-		if (v050)
-			m_errorReporter.syntaxError(_function.location(), "No visibility specified.");
-		else
-			m_errorReporter.warning(
-				_function.location(),
-				"No visibility specified. Defaulting to \"" +
-				Declaration::visibilityToString(_function.visibility()) +
-				"\"."
-			);
-	}
+		m_errorReporter.warning(
+			_function.location(),
+			"No visibility specified. Defaulting to \"" +
+			Declaration::visibilityToString(_function.visibility()) +
+			"\"."
+		);
 	return true;
 }
 
@@ -239,19 +222,5 @@ bool SyntaxChecker::visit(FunctionTypeName const& _node)
 		if (!decl->name().empty())
 			m_errorReporter.warning(decl->location(), "Naming function type return parameters is deprecated.");
 
-	return true;
-}
-
-bool SyntaxChecker::visit(VariableDeclaration const& _declaration)
-{
-	bool const v050 = m_sourceUnit->annotation().experimentalFeatures.count(ExperimentalFeature::V050);
-
-	if (!_declaration.typeName())
-	{
-		if (v050)
-			m_errorReporter.syntaxError(_declaration.location(), "Use of the \"var\" keyword is deprecated.");
-		else
-			m_errorReporter.warning(_declaration.location(), "Use of the \"var\" keyword is deprecated.");
-	}
 	return true;
 }

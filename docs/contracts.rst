@@ -95,14 +95,14 @@ This means that cyclic creation dependencies are impossible.
         {
             // Create a new Token contract and return its address.
             // From the JavaScript side, the return type is simply
-            // `address`, as this is the closest type available in
+            // "address", as this is the closest type available in
             // the ABI.
             return new OwnedToken(name);
         }
 
         function changeName(OwnedToken tokenAddress, bytes32 name)  public {
-            // Again, the external type of `tokenAddress` is
-            // simply `address`.
+            // Again, the external type of "tokenAddress" is
+            // simply "address".
             tokenAddress.changeName(name);
         }
 
@@ -203,10 +203,10 @@ In the following example, ``D``, can call ``c.getData()`` to retrieve the value 
     contract D {
         function readData() public {
             C c = new C();
-            uint local = c.f(7); // error: member `f` is not visible
+            uint local = c.f(7); // error: member "f" is not visible
             c.setData(3);
             local = c.getData();
-            local = c.compute(3, 5); // error: member `compute` is not visible
+            local = c.compute(3, 5); // error: member "compute" is not visible
         }
     }
 
@@ -308,9 +308,9 @@ inheritable properties of contracts and may be overridden by derived contracts.
         address owner;
 
         // This contract only defines a modifier but does not use
-        // it: it will be used in derived contracts.
+        // it - it will be used in derived contracts.
         // The function body is inserted where the special symbol
-        // `_;` in the definition of a modifier appears.
+        // "_;" in the definition of a modifier appears.
         // This means that if the owner calls this function, the
         // function is executed and otherwise, an exception is
         // thrown.
@@ -321,9 +321,9 @@ inheritable properties of contracts and may be overridden by derived contracts.
     }
 
     contract mortal is owned {
-        // This contract inherits the `onlyOwner` modifier from
-        // `owned` and applies it to the `close` function, which
-        // causes that calls to `close` only have an effect if
+        // This contract inherits the "onlyOwner"-modifier from
+        // "owned" and applies it to the "close"-function, which
+        // causes that calls to "close" only have an effect if
         // they are made by the stored owner.
         function close() public onlyOwner {
             selfdestruct(owner);
@@ -346,7 +346,7 @@ inheritable properties of contracts and may be overridden by derived contracts.
         function Register(uint initialPrice) public { price = initialPrice; }
 
         // It is important to also provide the
-        // `payable` keyword here, otherwise the function will
+        // "payable" keyword here, otherwise the function will
         // automatically reject all Ether sent to it.
         function register() public payable costs(price) {
             registeredAddresses[msg.sender] = true;
@@ -367,7 +367,7 @@ inheritable properties of contracts and may be overridden by derived contracts.
         }
 
         /// This function is protected by a mutex, which means that
-        /// reentrant calls from within `msg.sender.call` cannot call `f` again.
+        /// reentrant calls from within msg.sender.call cannot call f again.
         /// The `return 7` statement assigns 7 to the return value but still
         /// executes the statement `locked = false` in the modifier.
         function f() public noReentrancy returns (uint) {
@@ -448,7 +448,7 @@ Functions can be declared ``view`` in which case they promise not to modify the 
 The following statements are considered modifying the state:
 
 #. Writing to state variables.
-#. :ref:`Emitting events <events>`.
+#. :ref:`Emitting events. <events>`.
 #. :ref:`Creating other contracts <creating-contracts>`.
 #. Using ``selfdestruct``.
 #. Sending Ether via calls.
@@ -467,13 +467,13 @@ The following statements are considered modifying the state:
     }
 
 .. note::
-  ``constant`` on functions is an alias to ``view``, but this is deprecated and is planned to be dropped in version 0.5.0.
+  ``constant`` is an alias to ``view``.
 
 .. note::
   Getter methods are marked ``view``.
 
 .. warning::
-  Before version 0.4.17 the compiler didn't enforce that ``view`` is not modifying the state.
+  The compiler does not enforce yet that a ``view`` method is not modifying state.
 
 .. index:: ! pure function, function;pure
 
@@ -503,7 +503,7 @@ In addition to the list of state modifying statements explained above, the follo
     }
 
 .. warning::
-  Before version 0.4.17 the compiler didn't enforce that ``view`` is not reading the state.
+  The compiler does not enforce yet that a ``pure`` method is not reading from the state.
 
 .. index:: ! fallback function, function;fallback
 
@@ -523,14 +523,16 @@ Ether (without data). Additionally, in order to receive Ether, the fallback func
 must be marked ``payable``. If no such function exists, the contract cannot receive
 Ether through regular transactions.
 
-In the worst case, the fallback function can only rely on 2300 gas being available (for example when send or transfer is used), leaving not much room to perform other operations except basic logging. The following operations will consume more gas than the 2300 gas stipend:
+In such a context, there is usually very little gas available to the function call (to be precise, 2300 gas), so it is important to make fallback functions as cheap as possible. Note that the gas required by a transaction (as opposed to an internal call) that invokes the fallback function is much higher, because each transaction charges an additional amount of 21000 gas or more for things like signature checking.
+
+In particular, the following operations will consume more gas than the stipend provided to a fallback function:
 
 - Writing to storage
 - Creating a contract
 - Calling an external function which consumes a large amount of gas
 - Sending Ether
 
-Like any function, the fallback function can execute complex operations as long as there is enough gas passed on to it.
+Please ensure you test your fallback function thoroughly to ensure the execution cost is less than 2300 gas before deploying a contract.
 
 .. note::
     Even though the fallback function cannot have arguments, one can still use ``msg.data`` to retrieve
@@ -559,7 +561,7 @@ Like any function, the fallback function can execute complex operations as long 
         // This function is called for all messages sent to
         // this contract (there is no other function).
         // Sending Ether to this contract will cause an exception,
-        // because the fallback function does not have the `payable`
+        // because the fallback function does not have the "payable"
         // modifier.
         function() public { x = 1; }
         uint x;
@@ -722,12 +724,10 @@ All non-indexed arguments will be stored in the data part of the log.
         );
 
         function deposit(bytes32 _id) public payable {
-            // Events are emitted using `emit`, followed by
-            // the name of the event and the arguments
-            // (if any) in parentheses. Any such invocation
-            // (even deeply nested) can be detected from
-            // the JavaScript API by filtering for `Deposit`.
-            emit Deposit(msg.sender, _id, msg.value);
+            // Any call to this function (even deeply nested) can
+            // be detected from the JavaScript API by filtering
+            // for `Deposit` to be called.
+            Deposit(msg.sender, _id, msg.value);
         }
     }
 
@@ -744,7 +744,7 @@ The use in the JavaScript API would be as follows:
     // watch for changes
     event.watch(function(error, result){
         // result will contain various information
-        // including the argumets given to the `Deposit`
+        // including the argumets given to the Deposit
         // call.
         if (!error)
             console.log(result);
@@ -823,7 +823,7 @@ Details are given in the following example.
         address owner;
     }
 
-    // Use `is` to derive from another contract. Derived
+    // Use "is" to derive from another contract. Derived
     // contracts can access all non-private members including
     // internal functions and state variables. These cannot be
     // accessed externally via `this`, though.
@@ -846,9 +846,9 @@ Details are given in the following example.
         function unregister() public;
      }
 
-    // Multiple inheritance is possible. Note that `owned` is
-    // also a base class of `mortal`, yet there is only a single
-    // instance of `owned` (as for virtual inheritance in C++).
+    // Multiple inheritance is possible. Note that "owned" is
+    // also a base class of "mortal", yet there is only a single
+    // instance of "owned" (as for virtual inheritance in C++).
     contract named is owned, mortal {
         function named(bytes32 name) {
             Config config = Config(0xD5f9D8D94886E70b06E474c3fB14Fd43E2f23970);
@@ -939,44 +939,19 @@ derived override, but this function will bypass
         function kill() public { /* do cleanup 2 */ super.kill(); }
     }
 
-    contract Final is Base1, Base2 {
+    contract Final is Base2, Base1 {
     }
 
-If ``Base2`` calls a function of ``super``, it does not simply
+If ``Base1`` calls a function of ``super``, it does not simply
 call this function on one of its base contracts.  Rather, it
 calls this function on the next base contract in the final
-inheritance graph, so it will call ``Base1.kill()`` (note that
+inheritance graph, so it will call ``Base2.kill()`` (note that
 the final inheritance sequence is -- starting with the most
-derived contract: Final, Base2, Base1, mortal, owned).
+derived contract: Final, Base1, Base2, mortal, owned).
 The actual function that is called when using super is
 not known in the context of the class where it is used,
 although its type is known. This is similar for ordinary
 virtual method lookup.
-
-.. index:: ! constructor
-
-Constructors
-============
-A constructor is an optional function with the same name as the contract which is executed upon contract creation. 
-Constructor functions can be either ``public`` or ``internal``.
-
-::
-
-    pragma solidity ^0.4.11;
-
-    contract A {
-        uint public a;
-
-        function A(uint _a) internal {
-            a = _a;
-        }
-    }
-
-    contract B is A(1) {
-        function B() public {}
-    }
-
-A constructor set as ``internal`` causes the contract to be marked as :ref:`abstract <abstract-contract>`.
 
 .. index:: ! base;constructor
 
@@ -1050,13 +1025,11 @@ As an exception, a state variable getter can override a public function.
 
 .. index:: ! contract;abstract, ! abstract contract
 
-.. _abstract-contract:
-
 ******************
 Abstract Contracts
 ******************
 
-Contracts are marked as abstract when at least one of their functions lacks an implementation as in the following example (note that the function declaration header is terminated by ``;``)::
+Contract functions can lack an implementation as in the following example (note that the function declaration header is terminated by ``;``)::
 
     pragma solidity ^0.4.0;
 
@@ -1064,7 +1037,9 @@ Contracts are marked as abstract when at least one of their functions lacks an i
         function utterance() public returns (bytes32);
     }
 
-Such contracts cannot be compiled (even if they contain implemented functions alongside non-implemented functions), but they can be used as base contracts::
+Such contracts cannot be compiled (even if they contain
+implemented functions alongside non-implemented functions),
+but they can be used as base contracts::
 
     pragma solidity ^0.4.0;
 
@@ -1077,19 +1052,6 @@ Such contracts cannot be compiled (even if they contain implemented functions al
     }
 
 If a contract inherits from an abstract contract and does not implement all non-implemented functions by overriding, it will itself be abstract.
-
-Note that a function without implementation is different from a :ref:`Function Type <function_types>` even though their syntax looks very similar.
-
-Example of function without implementation (a function declaration)::
-
-    function foo(address) external returns (address);
-
-Example of a Function Type (a variable declaration, where the variable is of type ``function``)::
-
-    function(address) external returns (address) foo;
-
-Abstract contracts decouple the definition of a contract from its implementation providing better extensibility and self-documentation and 
-facilitating patterns like the `Template method <https://en.wikipedia.org/wiki/Template_method_pattern>`_ and removing code duplication.
 
 .. index:: ! contract;interface, ! interface contract
 
@@ -1138,11 +1100,7 @@ is executed in the context of the calling contract, i.e. ``this`` points to the
 calling contract, and especially the storage from the calling contract can be
 accessed. As a library is an isolated piece of source code, it can only access
 state variables of the calling contract if they are explicitly supplied (it
-would have no way to name them, otherwise). Library functions can only be
-called directly (i.e. without the use of ``DELEGATECALL``) if they do not modify
-the state (i.e. if they are ``view`` or ``pure`` functions),
-because libraries are assumed to be stateless. In particular, it is
-not possible to destroy a library unless Solidity's type system is circumvented.
+would have no way to name them, otherwise).
 
 Libraries can be seen as implicit base contracts of the contracts that use them.
 They will not be explicitly visible in the inheritance hierarchy, but calls
@@ -1153,7 +1111,7 @@ if the library were a base contract. Of course, calls to internal functions
 use the internal calling convention, which means that all internal types
 can be passed and memory types will be passed by reference and not copied.
 To realize this in the EVM, code of internal library functions
-and all functions called from therein will at compile time be pulled into the calling
+and all functions called from therein will be pulled into the calling
 contract, and a regular ``JUMP`` call will be used instead of a ``DELEGATECALL``.
 
 .. index:: using for, set
@@ -1175,7 +1133,7 @@ more advanced example to implement a set).
       // reference" and thus only its storage address and not
       // its contents is passed as part of the call.  This is a
       // special feature of library functions.  It is idiomatic
-      // to call the first parameter `self`, if the function can
+      // to call the first parameter 'self', if the function can
       // be seen as a method of that object.
       function insert(Data storage self, uint value)
           public
@@ -1219,7 +1177,7 @@ more advanced example to implement a set).
     }
 
 Of course, you do not have to follow this way to use
-libraries: they can also be used without defining struct
+libraries - they can also be used without defining struct
 data types. Functions also work without any storage
 reference parameters, and they can have multiple storage reference
 parameters and in any position.
@@ -1310,30 +1268,6 @@ Restrictions for libraries in comparison to contracts:
 
 (These might be lifted at a later point.)
 
-Call Protection For Libraries
-=============================
-
-As mentioned in the introduction, if a library's code is executed
-using a ``CALL`` instead of a ``DELEGATECALL`` or ``CALLCODE``,
-it will revert unless a ``view`` or ``pure`` function is called.
-
-The EVM does not provide a direct way for a contract to detect
-whether it was called using ``CALL`` or not, but a contract
-can use the ``ADDRESS`` opcode to find out "where" it is
-currently running. The generated code compares this address
-to the address used at construction time to determine the mode
-of calling.
-
-More specifically, the runtime code of a library always starts
-with a push instruction, which is a zero of 20 bytes at
-compilation time. When the deploy code runs, this constant
-is replaced in memory by the current address and this
-modified code is stored in the contract. At runtime,
-this causes the deploy time address to be the first
-constant to be pushed onto the stack and the dispatcher
-code compares the current address against this constant
-for any non-view and non-pure function.
-
 .. index:: ! using for, library
 
 .. _using-for:
@@ -1409,7 +1343,7 @@ Let us rewrite the set example from the
             // Here, all variables of type Set.Data have
             // corresponding member functions.
             // The following function call is identical to
-            // `Set.insert(knownValues, value)`
+            // Set.insert(knownValues, value)
             require(knownValues.insert(value));
         }
     }

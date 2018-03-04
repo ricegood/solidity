@@ -69,8 +69,6 @@ private:
 	virtual bool visit(FunctionDefinition const& _function) override;
 	virtual bool visit(FunctionTypeName const& _node) override;
 
-	virtual bool visit(VariableDeclaration const& _declaration) override;
-
 	ErrorReporter& m_errorReporter;
 
 	/// Flag that indicates whether a function modifier actually contains '_'.

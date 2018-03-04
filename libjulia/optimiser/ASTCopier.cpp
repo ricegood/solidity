@@ -37,11 +37,6 @@ Statement ASTCopier::operator()(Instruction const&)
 	return {};
 }
 
-Statement ASTCopier::operator()(ExpressionStatement const& _statement)
-{
-	return ExpressionStatement{ _statement.location, translate(_statement.expression) };
-}
-
 Statement ASTCopier::operator()(VariableDeclaration const& _varDecl)
 {
 	return VariableDeclaration{
@@ -72,7 +67,7 @@ Statement ASTCopier::operator()(Label const&)
 	return {};
 }
 
-Expression ASTCopier::operator()(FunctionCall const& _call)
+Statement ASTCopier::operator()(FunctionCall const& _call)
 {
 	return FunctionCall{
 		_call.location,
@@ -81,7 +76,7 @@ Expression ASTCopier::operator()(FunctionCall const& _call)
 	};
 }
 
-Expression ASTCopier::operator()(FunctionalInstruction const& _instruction)
+Statement ASTCopier::operator()(FunctionalInstruction const& _instruction)
 {
 	return FunctionalInstruction{
 		_instruction.location,
@@ -90,12 +85,12 @@ Expression ASTCopier::operator()(FunctionalInstruction const& _instruction)
 	};
 }
 
-Expression ASTCopier::operator()(Identifier const& _identifier)
+Statement ASTCopier::operator()(Identifier const& _identifier)
 {
 	return Identifier{_identifier.location, translateIdentifier(_identifier.name)};
 }
 
-Expression ASTCopier::operator()(Literal const& _literal)
+Statement ASTCopier::operator()(Literal const& _literal)
 {
 	return translate(_literal);
 }
@@ -145,14 +140,9 @@ Statement ASTCopier::operator ()(Block const& _block)
 	return translate(_block);
 }
 
-Expression ASTCopier::translate(Expression const& _expression)
-{
-	return _expression.apply_visitor(static_cast<ExpressionCopier&>(*this));
-}
-
 Statement ASTCopier::translate(Statement const& _statement)
 {
-	return _statement.apply_visitor(static_cast<StatementCopier&>(*this));
+	return boost::apply_visitor(*this, _statement);
 }
 
 Block ASTCopier::translate(Block const& _block)

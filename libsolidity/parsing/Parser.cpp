@@ -77,6 +77,9 @@ ASTPointer<SourceUnit> Parser::parse(shared_ptr<Scanner> const& _scanner)
 			switch (auto token = m_scanner->currentToken())
 			{
 			case Token::Pragma:
+				// DEBUG //
+				std::cout << "* Pragma declaration" << endl;
+				///////////
 				nodes.push_back(parsePragmaDirective());
 				break;
 			case Token::Import:
@@ -85,6 +88,10 @@ ASTPointer<SourceUnit> Parser::parse(shared_ptr<Scanner> const& _scanner)
 			case Token::Interface:
 			case Token::Contract:
 			case Token::Library:
+				// DEBUG //
+				std::cout << "* * Interface & Contract & Library declaration" << endl;
+				resetMyOptimization();
+				///////////
 				nodes.push_back(parseContractDefinition(token));
 				break;
 			default:
@@ -92,6 +99,10 @@ ASTPointer<SourceUnit> Parser::parse(shared_ptr<Scanner> const& _scanner)
 			}
 		}
 		solAssert(m_recursionDepth == 0, "");
+
+		// DEBUG //
+		std::cout << "* * Parser::parse return <SourceUnit>" << endl;
+		///////////
 		return nodeFactory.createNode<SourceUnit>(nodes);
 	}
 	catch (FatalError const&)
@@ -238,10 +249,16 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition(Token::Value _exp
 		Token::Value currentTokenValue = m_scanner->currentToken();
 		if (currentTokenValue == Token::RBrace)
 			break;
-		else if (currentTokenValue == Token::Function)
+		else if (currentTokenValue == Token::Function){
 			// This can be a function or a state variable of function type (especially
 			// complicated to distinguish fallback function from function type state variable)
+
+			// DEBUG //
+			std::cout << "* * function or a state variable Declaration !!" << endl;
+			///////////
+
 			subNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable(name.get()));
+		}
 		else if (currentTokenValue == Token::Struct)
 			subNodes.push_back(parseStructDefinition());
 		else if (currentTokenValue == Token::Enum)
@@ -252,11 +269,24 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition(Token::Value _exp
 			Token::isElementaryTypeName(currentTokenValue)
 		)
 		{
+			// This part is storage variable part!!!!!
+			// DEBUG //
+			// #TODO3.
+			// myOptimization = on/off
+			myOptimization = true;
+			if(myOptimization && Token::isElementaryTypeName(currentTokenValue)){
+				isContractVariableDeclaration = true;
+			}
+			std::cout << "* * Contract variable/Mapping/Identifier(ex. class) declaration!" << endl;
+			///////////
 			VarDeclParserOptions options;
 			options.isStateVariable = true;
 			options.allowInitialValue = true;
 			subNodes.push_back(parseVariableDeclaration(options));
 			expectToken(Token::Semicolon);
+			//DEBUG//
+			isContractVariableDeclaration = false;
+			/////////
 		}
 		else if (currentTokenValue == Token::Modifier)
 			subNodes.push_back(parseModifierDefinition());
@@ -417,16 +447,45 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 	)
 	{
 		// this has to be a function
+		// DEBUG //
+		std::cout << "This has to be a function!" << endl;
+
+		// #TODO1.
+		// Roll back before the Lbrace, and Add Source "var a2 = a"
+		// 나중에 빈도검사를 해서 allowDeclareVariable 이런 bool을 만들게되면 이 if 문 안에 새로운 조건을 넣어야겠지!
+		if(m_scanner->currentToken() == Token::LBrace){
+			// check function for optimize(one time scan!)
+			checkFunctionForOptimize();
+
+			// Rollback the pos
+			m_scanner->rollBackToken(-1);
+
+			// #TODO1+TODO3
+			for(auto& kv : isOptimized){
+				cout << "#TODO1. Insert(var " << kv.first << "_optimize_ = " << kv.first << ";)" << endl;
+				m_scanner->addSource(" var " + kv.first + "_optimize_ = " + kv.first + "; ");
+				kv.second = false;	// 기본적으로 false 이긴 할테지만 만일의 경우에 대비
+			}
+
+			// update Next Token
+			m_scanner->updateNextToken();
+		}
+		///////////
+
 		ASTPointer<Block> block = ASTPointer<Block>();
 		nodeFactory.markEndPosition();
 		if (m_scanner->currentToken() != Token::Semicolon)
 		{
+			// DEBUG //
+			std::cout << "parseBlock()" << endl;
+			///////////
 			block = parseBlock();
 			nodeFactory.setEndPositionFromNode(block);
 		}
 		else
 			m_scanner->next(); // just consume the ';'
 		bool const c_isConstructor = (_contractName && *header.name == *_contractName);
+
 		return nodeFactory.createNode<FunctionDefinition>(
 			header.name,
 			header.visibility,
@@ -442,6 +501,10 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 	else
 	{
 		// this has to be a state variable
+
+		// DEBUG //
+		std::cout << "This has to be a state variable!" << endl;
+		///////////
 		ASTPointer<TypeName> type = nodeFactory.createNode<FunctionTypeName>(
 			header.parameters,
 			header.returnParameters,
@@ -576,14 +639,23 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(
 	}
 	nodeFactory.markEndPosition();
 
+	// DEBUG //
+	string varID = "";
+	///////////
+
 	if (_options.allowEmptyName && m_scanner->currentToken() != Token::Identifier)
 	{
 		identifier = make_shared<ASTString>("");
 		solAssert(type != nullptr, "");
 		nodeFactory.setEndPositionFromNode(type);
 	}
-	else
+	else{
+		//DEBUG//
+		varID = m_scanner->currentLiteral();
+		cout << "@@@@current var ID : " << varID << endl;
+		/////////
 		identifier = expectIdentifierToken();
+	}
 	ASTPointer<Expression> value;
 	if (_options.allowInitialValue)
 	{
@@ -594,6 +666,44 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(
 			nodeFactory.setEndPositionFromNode(value);
 		}
 	}
+
+	// DEBUG //
+	// #TODO3.
+	// 문제 : contract 뿐만아니라 local 변수도 전부다 여기까지는 결국 도달 + elementary 형 뿐 아니라 mapping 안에서도 도달한다는것
+	// 해결 : 일단 isContractVariableDeclaration && isElementaryTypeForOptimize 로 해결은 해놓음..
+
+	if(isContractVariableDeclaration && isElementaryTypeForOptimize && !isDeclaredConst){
+		cout << "@@@@ class variable declaration ! (not constant) @@@@" << endl;
+		// insert key to map
+		// 이제는 function 에서 isOptimized 를 싹 리셋한다음 빈도검사 후 다시 채운다.
+		// 그러므로 이 부분이 필요가 없다. 활성화시켜도 리셋됨!
+		/*
+		if(isOptimized.count(varID) == 0){
+			cout << "*INSERT " << varID << " to isOptimized map!" << endl;
+			isOptimized[varID] = false;
+			isOptimizingDeclared[varID+"_optimize_"] = false;
+		}
+		*/
+
+		if(numOfLoad.count(varID) == 0){
+			numOfLoad[varID] = 0;
+			numOfStore[varID] = 0;
+		}
+		cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << endl;
+	}
+
+	// 이건 var 을 선언하는 경우. identifier 가 ~_optimize_ 일 경우, isOptimizingDeclared를 true 로 바꾼다.
+	else if(isFunctionVariableDeclaration){
+		if(isOptimizingDeclared.count(varID) == 1){
+			isOptimizingDeclared[varID] = true;
+		}
+	}
+
+	// 하나의 Value declaration 읽는게 끝나고 나면 reset
+	isElementaryTypeForOptimize = false;
+
+	///////////
+
 	return nodeFactory.createNode<VariableDeclaration>(
 		type,
 		identifier,
@@ -747,6 +857,11 @@ ASTPointer<TypeName> Parser::parseTypeName(bool _allowVar)
 		unsigned secondSize;
 		tie(firstSize, secondSize) = m_scanner->currentTokenInfo();
 		ElementaryTypeNameToken elemTypeName(token, firstSize, secondSize);
+		// DEBUG //
+		// elemTypeName.toString() 하면 토큰 이름 리턴
+		isElementaryTypeForOptimize = true;
+		cout << "@@@@type check : " << elemTypeName.toString() << endl;
+		///////////
 		type = ASTNodeFactory(*this).createNode<ElementaryTypeName>(elemTypeName);
 		m_scanner->next();
 	}
@@ -841,8 +956,32 @@ ASTPointer<Block> Parser::parseBlock(ASTPointer<ASTString> const& _docString)
 	ASTNodeFactory nodeFactory(*this);
 	expectToken(Token::LBrace);
 	vector<ASTPointer<Statement>> statements;
-	while (m_scanner->currentToken() != Token::RBrace)
+
+	while (m_scanner->currentToken() != Token::RBrace){
 		statements.push_back(parseStatement());
+		// DEBUG //
+		// #TODO2+TODO3
+		// Roll back before the Rbrace, and Add Source "a = a2"
+		if((m_scanner->currentToken() == Token::RBrace)){
+
+			// Rollback the pos
+			m_scanner->rollBackToken(1);
+
+			// Add source "a = a2" when current pos is before '}' (end of the function)
+			for(auto& kv : isOptimized){
+				if(kv.second){
+					cout << "#TODO2. Insert(" << kv.first << " = " << kv.first << "_optimize_;" << endl;
+					m_scanner->addSource(" " + kv.first + " = " + kv.first + "_optimize_; ");
+					kv.second = false;	// 막줄 추가하고 flag=false
+				}
+			}
+
+			// Update next & current token
+			m_scanner->updateNextToken();
+			m_scanner->next();
+		}
+		///////////
+	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::RBrace);
 	return nodeFactory.createNode<Block>(_docString, statements);
@@ -854,6 +993,7 @@ ASTPointer<Statement> Parser::parseStatement()
 	ASTPointer<ASTString> docString;
 	if (m_scanner->currentCommentLiteral() != "")
 		docString = make_shared<ASTString>(m_scanner->currentCommentLiteral());
+
 	ASTPointer<Statement> statement;
 	switch (m_scanner->currentToken())
 	{
@@ -897,15 +1037,14 @@ ASTPointer<Statement> Parser::parseStatement()
 	case Token::Assembly:
 		return parseInlineAssembly(docString);
 	case Token::Identifier:
-		if (m_scanner->currentLiteral() == "emit")
-			statement = parseEmitStatement(docString);
-		else if (m_insideModifier && m_scanner->currentLiteral() == "_")
+		if (m_insideModifier && m_scanner->currentLiteral() == "_")
 		{
 			statement = ASTNodeFactory(*this).createNode<PlaceholderStatement>(docString);
 			m_scanner->next();
 		}
-		else
+		else{
 			statement = parseSimpleStatement(docString);
+		}
 		break;
 	default:
 		statement = parseSimpleStatement(docString);
@@ -928,7 +1067,7 @@ ASTPointer<InlineAssembly> Parser::parseInlineAssembly(ASTPointer<ASTString> con
 	}
 
 	assembly::Parser asmParser(m_errorReporter);
-	shared_ptr<assembly::Block> block = asmParser.parse(m_scanner, true);
+	shared_ptr<assembly::Block> block = asmParser.parse(m_scanner);
 	nodeFactory.markEndPosition();
 	return nodeFactory.createNode<InlineAssembly>(_docString, block);
 }
@@ -1017,38 +1156,6 @@ ASTPointer<ForStatement> Parser::parseForStatement(ASTPointer<ASTString> const& 
 	);
 }
 
-ASTPointer<EmitStatement> Parser::parseEmitStatement(ASTPointer<ASTString> const& _docString)
-{
-	ASTNodeFactory nodeFactory(*this);
-	m_scanner->next();
-	ASTNodeFactory eventCallNodeFactory(*this);
-
-	if (m_scanner->currentToken() != Token::Identifier)
-		fatalParserError("Expected event name or path.");
-
-	vector<ASTPointer<PrimaryExpression>> path;
-	while (true)
-	{
-		path.push_back(parseIdentifier());
-		if (m_scanner->currentToken() != Token::Period)
-			break;
-		m_scanner->next();
-	};
-
-	auto eventName = expressionFromIndexAccessStructure(path, {});
-	expectToken(Token::LParen);
-
-	vector<ASTPointer<Expression>> arguments;
-	vector<ASTPointer<ASTString>> names;
-	std::tie(arguments, names) = parseFunctionCallArguments();
-	eventCallNodeFactory.markEndPosition();
-	nodeFactory.markEndPosition();
-	expectToken(Token::RParen);
-	auto eventCall = eventCallNodeFactory.createNode<FunctionCall>(eventName, arguments, names);
-	auto statement = nodeFactory.createNode<EmitStatement>(_docString, eventCall);
-	return statement;
-}
-
 ASTPointer<Statement> Parser::parseSimpleStatement(ASTPointer<ASTString> const& _docString)
 {
 	RecursionGuard recursionGuard(*this);
@@ -1114,6 +1221,9 @@ ASTPointer<VariableDeclarationStatement> Parser::parseVariableDeclarationStateme
 	ASTPointer<TypeName> const& _lookAheadArrayType
 )
 {
+	// DEBUG //
+	cout << "**This is parseVariableDeclarationStatement**" << endl;
+	///////////
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory(*this);
 	if (_lookAheadArrayType)
@@ -1162,7 +1272,17 @@ ASTPointer<VariableDeclarationStatement> Parser::parseVariableDeclarationStateme
 		VarDeclParserOptions options;
 		options.allowVar = true;
 		options.allowLocationSpecifier = true;
+		//DEBUG//
+		isFunctionVariableDeclaration = true;
+		/////////
+
 		variables.push_back(parseVariableDeclaration(options, _lookAheadArrayType));
+
+		//DEBUG//
+		// 이때 선언한 ID 이름이 num_optimize_ 일경우, isOptimizingDeclared 값이 true 가 됨
+		// 그렇게 되면 무조건 optimize 하는 변수라고 생각하고 이 선언이 무사히 push 되고나면 isOptimized[num] = true하면됨
+		isFunctionVariableDeclaration = false;
+		/////////
 		nodeFactory.setEndPositionFromNode(variables.back());
 	}
 	if (m_scanner->currentToken() == Token::Assign)
@@ -1171,6 +1291,16 @@ ASTPointer<VariableDeclarationStatement> Parser::parseVariableDeclarationStateme
 		value = parseExpression();
 		nodeFactory.setEndPositionFromNode(value);
 	}
+
+	// DEBUG //
+	// #TODO2.
+	// 문제는 여기에서 varID 값을 어떻게 가져올 것인가. 어딘가에 이것도 저장해야겠다..^_^;; nowVarID
+	if(isOptimizingDeclared.count(nowVarID+"_optimize_")==1 && isOptimizingDeclared.at(nowVarID+"_optimize_")){
+		isOptimized[nowVarID] = true;
+		isOptimizingDeclared[nowVarID+"_optimize_"] = false; //reset
+		nowVarID = ""; //reset
+	}
+	///////////
 	return nodeFactory.createNode<VariableDeclarationStatement>(_docString, variables, value);
 }
 
@@ -1179,6 +1309,9 @@ ASTPointer<ExpressionStatement> Parser::parseExpressionStatement(
 	ASTPointer<Expression> const& _lookAheadIndexAccessStructure
 )
 {
+	// DEBUG //
+	cout << "** This is parseExpressionStatement **" << endl;
+	///////////
 	RecursionGuard recursionGuard(*this);
 	ASTPointer<Expression> expression = parseExpression(_lookAheadIndexAccessStructure);
 	return ASTNodeFactory(*this, expression).createNode<ExpressionStatement>(_docString, expression);
@@ -1237,6 +1370,20 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 	ASTPointer<Expression> const& _lookAheadIndexAccessStructure
 )
 {
+	// DEBUG //
+	// #TODO2+TODO3
+	// just add _optimize_ to the value name.
+
+	if(isOptimized.count(m_scanner->currentLiteral()) == 1 && isOptimized.at(m_scanner->currentLiteral())){
+		cout << "#TODO2. Change " << m_scanner->currentLiteral() << " to " << m_scanner->currentLiteral() << "_optimize_" << endl;
+		m_scanner->addString("_optimize_");
+	} else if(isOptimized.count(m_scanner->currentLiteral()) == 1 && isOptimizingDeclared.at(m_scanner->currentLiteral()+"_optimize_")){
+		// map 안에 존재하지만 false
+		// 또한 isOptimizingDeclared 는 true 인 경우 (=> 현재는 function var declare 중이며, 좌변이 num_optimize_ 일 때)
+		nowVarID = m_scanner->currentLiteral();
+	}
+	///////////
+
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory = _lookAheadIndexAccessStructure ?
 		ASTNodeFactory(*this, _lookAheadIndexAccessStructure) : ASTNodeFactory(*this);
@@ -1610,6 +1757,51 @@ ASTPointer<ASTString> Parser::getLiteralAndAdvance()
 	m_scanner->next();
 	return identifier;
 }
+
+// DEBUG //
+void Parser::resetMyOptimization(){
+	isOptimized.clear();
+	isOptimizingDeclared.clear();
+	numOfLoad.clear();	// contract 마다 리셋
+	numOfStore.clear();	// contract 마다 리셋
+	nowVarID = "";
+	isContractVariableDeclaration = false;
+	isFunctionVariableDeclaration = false;
+	isElementaryTypeForOptimize = false;
+}
+
+void Parser::resetMyOptimizationForFunction(){
+	isOptimized.clear();
+	isOptimizingDeclared.clear();
+	for(auto& kv : numOfLoad){
+		kv.second = 0;
+	}
+	for(auto& kv : numOfStore){
+		kv.second = 0;
+	}
+	nowVarID = "";
+	isContractVariableDeclaration = false;
+	isFunctionVariableDeclaration = false;
+	isElementaryTypeForOptimize = false;
+}
+
+void Parser::checkFunctionForOptimize(){
+	// reset
+	resetMyOptimizationForFunction();
+
+	// check
+	// 이 함수 내용만 다 구현하고 나면 빈도검사 적용도 완벽히완료!!!
+
+	// 1) 스캐너를 이용해서 토큰 빈도수를 체크하고, map(numOfLoad/numOfStore) 에 빈도를 기록
+	// 2) LOAD + STORE*100 >= 101 일 경우 isOptimized/isOptimizingDeclared 에 varID 를 false 로 insert
+	// 3) 쓰고나서는 m_scanner->currentToken == LBrace 이어야함! 딱 그상태에서 들어왔으니까.
+
+	// 문제 : 로드/스토어를 토큰 스캔으로만 어떻게 구분하는가. for문속에서 몇번쓰이나는 어떻게 알아내는가.....
+
+
+}
+
+//////////
 
 }
 }

@@ -51,7 +51,6 @@ void Compiler::compileClone(
 	map<ContractDefinition const*, eth::Assembly const*> const& _contracts
 )
 {
-	solAssert(!_contract.isLibrary(), "");
 	ContractCompiler runtimeCompiler(nullptr, m_runtimeContext, m_optimize);
 	ContractCompiler cloneCompiler(&runtimeCompiler, m_context, m_optimize);
 	m_runtimeSub = cloneCompiler.compileClone(_contract, _contracts);

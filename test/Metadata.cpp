@@ -50,7 +50,7 @@ string bytecodeSansMetadata(string const& _bytecode)
 bool isValidMetadata(string const& _metadata)
 {
 	Json::Value metadata;
-	if (!jsonParseStrict(_metadata, metadata))
+	if (!Json::Reader().parse(_metadata, metadata, false))
 		return false;
 
 	if (

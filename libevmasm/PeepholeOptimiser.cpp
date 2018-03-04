@@ -91,6 +91,9 @@ struct Identity: SimplePeepholeOptimizerMethod<Identity, 1>
 {
 	static bool applySimple(AssemblyItem const& _item, std::back_insert_iterator<AssemblyItems> _out)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "Identity!!" << endl;
+		//////////////////
 		*_out = _item;
 		return true;
 	}
@@ -100,6 +103,9 @@ struct PushPop: SimplePeepholeOptimizerMethod<PushPop, 2>
 {
 	static bool applySimple(AssemblyItem const& _push, AssemblyItem const& _pop, std::back_insert_iterator<AssemblyItems>)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "PushPop!!" << endl;
+		//////////////////
 		auto t = _push.type();
 		return _pop == Instruction::POP && (
 			SemanticInformation::isDupInstruction(_push) ||
@@ -117,6 +123,10 @@ struct OpPop: SimplePeepholeOptimizerMethod<OpPop, 2>
 		std::back_insert_iterator<AssemblyItems> _out
 	)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "OpPop!!" << endl;
+		//////////////////
+
 		if (_pop == Instruction::POP && _op.type() == Operation)
 		{
 			Instruction instr = _op.instruction();
@@ -135,6 +145,9 @@ struct DoubleSwap: SimplePeepholeOptimizerMethod<DoubleSwap, 2>
 {
 	static size_t applySimple(AssemblyItem const& _s1, AssemblyItem const& _s2, std::back_insert_iterator<AssemblyItems>)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "DoubleSwap!!" << endl;
+		//////////////////
 		return _s1 == _s2 && SemanticInformation::isSwapInstruction(_s1);
 	}
 };
@@ -143,6 +156,9 @@ struct DoublePush: SimplePeepholeOptimizerMethod<DoublePush, 2>
 {
 	static bool applySimple(AssemblyItem const& _push1, AssemblyItem const& _push2, std::back_insert_iterator<AssemblyItems> _out)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "DoublePush!!" << endl;
+		//////////////////
 		if (_push1.type() == Push && _push2.type() == Push && _push1.data() == _push2.data())
 		{
 			*_out = _push1;
@@ -163,6 +179,11 @@ struct JumpToNext: SimplePeepholeOptimizerMethod<JumpToNext, 3>
 		std::back_insert_iterator<AssemblyItems> _out
 	)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "JumpToNext!!" << endl;
+		//////////////////
+
+
 		if (
 			_pushTag.type() == PushTag &&
 			(_jump == Instruction::JUMP || _jump == Instruction::JUMPI) &&
@@ -189,6 +210,10 @@ struct TagConjunctions: SimplePeepholeOptimizerMethod<TagConjunctions, 3>
 		std::back_insert_iterator<AssemblyItems> _out
 	)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "TagConjunctions!!" << endl;
+		//////////////////
+
 		if (
 			_pushTag.type() == PushTag &&
 			_and == Instruction::AND &&
@@ -209,6 +234,10 @@ struct UnreachableCode
 {
 	static bool apply(OptimiserState& _state)
 	{
+		// DEBUG MESSAGE //
+		//std::cout << "UnreachableCode!!" << endl;
+		//////////////////
+
 		auto it = _state.items.begin() + _state.i;
 		auto end = _state.items.end();
 		if (it == end)
@@ -258,6 +287,10 @@ size_t numberOfPops(AssemblyItems const& _items)
 
 bool PeepholeOptimiser::optimise()
 {
+	// DEBUG MESSAGE //
+	//std::cout << "PeepholeOptimiser!!" << endl;
+	//////////////////
+
 	OptimiserState state {m_items, 0, std::back_inserter(m_optimisedItems)};
 	while (state.i < m_items.size())
 		applyMethods(state, PushPop(), OpPop(), DoublePush(), DoubleSwap(), JumpToNext(), UnreachableCode(), TagConjunctions(), Identity());

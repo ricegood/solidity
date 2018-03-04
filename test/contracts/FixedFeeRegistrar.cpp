@@ -132,8 +132,13 @@ protected:
 	void deployRegistrar()
 	{
 		if (!s_compiledRegistrar)
-			s_compiledRegistrar.reset(new bytes(compileContract(registrarCode, "FixedFeeRegistrar")));
-
+		{
+			m_compiler.reset(false);
+			m_compiler.addSource("", registrarCode);
+			m_compiler.setOptimiserSettings(m_optimize, m_optimizeRuns);
+			BOOST_REQUIRE_MESSAGE(m_compiler.compile(), "Compiling contract failed");
+			s_compiledRegistrar.reset(new bytes(m_compiler.object("FixedFeeRegistrar").bytecode));
+		}
 		sendMessage(*s_compiledRegistrar, true);
 		BOOST_REQUIRE(!m_output.empty());
 	}

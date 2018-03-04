@@ -83,21 +83,6 @@ function compileWithoutWarning()
     test -z "$output" -a "$failed" -eq 0
 }
 
-printTask "Testing unknown options..."
-(
-    set +e
-    output=$("$SOLC" --allow=test 2>&1)
-    failed=$?
-    set -e
-
-    if [ "$output" == "unrecognised option '--allow=test'" ] && [ $failed -ne 0 ] ; then
-	echo "Passed"
-    else
-	printError "Incorrect response to unknown options: $STDERR"
-	exit 1
-    fi
-)
-
 printTask "Compiling various other contracts and libraries..."
 (
 cd "$REPO_ROOT"/test/compilationTests/
@@ -187,4 +172,4 @@ TMPDIR=$(mktemp -d)
     done
 )
 rm -rf "$TMPDIR"
-echo "Commandline tests successful."
+echo "Done."

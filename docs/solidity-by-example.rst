@@ -94,11 +94,7 @@ of votes.
             // called incorrectly. But watch out, this
             // will currently also consume all provided gas
             // (this is planned to change in the future).
-            require(
-                (msg.sender == chairperson) &&
-                !voters[voter].voted &&
-                (voters[voter].weight == 0)
-            );
+            require((msg.sender == chairperson) && !voters[voter].voted && (voters[voter].weight == 0));
             voters[voter].weight = 1;
         }
 
@@ -130,15 +126,15 @@ of votes.
             // modifies `voters[msg.sender].voted`
             sender.voted = true;
             sender.delegate = to;
-            Voter storage delegate_ = voters[to];
-            if (delegate_.voted) {
+            Voter storage delegate = voters[to];
+            if (delegate.voted) {
                 // If the delegate already voted,
                 // directly add to the number of votes
-                proposals[delegate_.vote].voteCount += sender.weight;
+                proposals[delegate.vote].voteCount += sender.weight;
             } else {
                 // If the delegate did not vote yet,
                 // add to her weight.
-                delegate_.weight += sender.weight;
+                delegate.weight += sender.weight;
             }
         }
 
@@ -159,13 +155,13 @@ of votes.
         /// @dev Computes the winning proposal taking all
         /// previous votes into account.
         function winningProposal() public view
-                returns (uint winningProposal_)
+                returns (uint winningProposal)
         {
             uint winningVoteCount = 0;
             for (uint p = 0; p < proposals.length; p++) {
                 if (proposals[p].voteCount > winningVoteCount) {
                     winningVoteCount = proposals[p].voteCount;
-                    winningProposal_ = p;
+                    winningProposal = p;
                 }
             }
         }
@@ -174,12 +170,11 @@ of votes.
         // of the winner contained in the proposals array and then
         // returns the name of the winner
         function winnerName() public view
-                returns (bytes32 winnerName_)
+                returns (bytes32 winnerName)
         {
-            winnerName_ = proposals[winningProposal()].name;
+            winnerName = proposals[winningProposal()].name;
         }
     }
-
 
 Possible Improvements
 =====================
@@ -219,7 +214,7 @@ activate themselves.
 
 ::
 
-    pragma solidity ^0.4.20; // should actually be 0.4.21
+    pragma solidity ^0.4.11;
 
     contract SimpleAuction {
         // Parameters of the auction. Times are either
@@ -277,7 +272,7 @@ activate themselves.
             // money back.
             require(msg.value > highestBid);
 
-            if (highestBid != 0) {
+            if (highestBidder != 0) {
                 // Sending back the money by simply using
                 // highestBidder.send(highestBid) is a security risk
                 // because it could execute an untrusted contract.
@@ -287,7 +282,7 @@ activate themselves.
             }
             highestBidder = msg.sender;
             highestBid = msg.value;
-            emit HighestBidIncreased(msg.sender, msg.value);
+            HighestBidIncreased(msg.sender, msg.value);
         }
 
         /// Withdraw a bid that was overbid.
@@ -330,7 +325,7 @@ activate themselves.
 
             // 2. Effects
             ended = true;
-            emit AuctionEnded(highestBidder, highestBid);
+            AuctionEnded(highestBidder, highestBid);
 
             // 3. Interaction
             beneficiary.transfer(highestBid);
@@ -376,7 +371,7 @@ high or low invalid bids.
 
 ::
 
-    pragma solidity ^0.4.20; // should actually be 0.4.21
+    pragma solidity ^0.4.11;
 
     contract BlindAuction {
         struct Bid {
@@ -514,7 +509,7 @@ high or low invalid bids.
             onlyAfter(revealEnd)
         {
             require(!ended);
-            emit AuctionEnded(highestBidder, highestBid);
+            AuctionEnded(highestBidder, highestBid);
             ended = true;
             beneficiary.transfer(highestBid);
         }
@@ -529,7 +524,7 @@ Safe Remote Purchase
 
 ::
 
-    pragma solidity ^0.4.20; // should actually be 0.4.21
+    pragma solidity ^0.4.11;
 
     contract Purchase {
         uint public value;
@@ -579,7 +574,7 @@ Safe Remote Purchase
             onlySeller
             inState(State.Created)
         {
-            emit Aborted();
+            Aborted();
             state = State.Inactive;
             seller.transfer(this.balance);
         }
@@ -594,7 +589,7 @@ Safe Remote Purchase
             condition(msg.value == (2 * value))
             payable
         {
-            emit PurchaseConfirmed();
+            PurchaseConfirmed();
             buyer = msg.sender;
             state = State.Locked;
         }
@@ -606,7 +601,7 @@ Safe Remote Purchase
             onlyBuyer
             inState(State.Locked)
         {
-            emit ItemReceived();
+            ItemReceived();
             // It is important to change the state first because
             // otherwise, the contracts called using `send` below
             // can call in again here.

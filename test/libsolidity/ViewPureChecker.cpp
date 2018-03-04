@@ -136,19 +136,17 @@ BOOST_AUTO_TEST_CASE(environment_access)
 	}
 	for (string const& x: pure)
 	{
-		CHECK_WARNING_ALLOW_MULTI(
+		CHECK_WARNING(
 			"contract C { function f() view public { var x = " + x + "; x; } }",
-			(std::vector<std::string>{
-				"Function state mutability can be restricted to pure",
-				"Use of the \"var\" keyword is deprecated."
-		}));
+			"restricted to pure"
+		);
 	}
 }
 
 BOOST_AUTO_TEST_CASE(view_error_for_050)
 {
 	CHECK_ERROR(
-		"pragma experimental \"v0.5.0\"; contract C { uint x; function f() view public { x = 2; } }",
+		"pragma experimental \"v0.5.0\"; contract C { uint x; function f() view { x = 2; } }",
 		TypeError,
 		"Function declared as view, but this expression (potentially) modifies the state and thus requires non-payable (the default) or payable."
 	);
@@ -183,10 +181,10 @@ BOOST_AUTO_TEST_CASE(interface)
 {
 	string text = R"(
 		interface D {
-			function f() view external;
+			function f() view public;
 		}
 		contract C is D {
-			function f() view external {}
+			function f() view public {}
 		}
 	)";
 	CHECK_SUCCESS_NO_WARNINGS(text);
@@ -284,9 +282,9 @@ BOOST_AUTO_TEST_CASE(builtin_functions)
 				require(this.call());
 			}
 			function g() pure public {
-				bytes32 x = keccak256("abc");
-				bytes32 y = sha256("abc");
-				address z = ecrecover(1, 2, 3, 4);
+				var x = keccak256("abc");
+				var y = sha256("abc");
+				var z = ecrecover(1, 2, 3, 4);
 				require(true);
 				assert(true);
 				x; y; z;
@@ -320,53 +318,6 @@ BOOST_AUTO_TEST_CASE(function_types)
 				function () external nonpayFun;
 
 				nonpayFun();
-			}
-		}
-	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-}
-
-BOOST_AUTO_TEST_CASE(selector)
-{
-	string text = R"(
-		contract C {
-			uint public x;
-			function f() payable public {
-			}
-			function g() pure public returns (bytes4) {
-				return this.f.selector ^ this.x.selector;
-			}
-		}
-	)";
-	CHECK_SUCCESS_NO_WARNINGS(text);
-}
-
-BOOST_AUTO_TEST_CASE(selector_complex)
-{
-	string text = R"(
-		contract C {
-			function f(C c) pure public returns (C) {
-				return c;
-			}
-			function g() pure public returns (bytes4) {
-				// By passing `this`, we read from the state, even if f itself is pure.
-				return f(this).f.selector;
-			}
-		}
-	)";
-	CHECK_ERROR(text, TypeError, "reads from the environment or state and thus requires \"view\"");
-}
-
-BOOST_AUTO_TEST_CASE(selector_complex2)
-{
-	string text = R"(
-		contract C {
-				function f() payable public returns (C) {
-				return this;
-			}
-			function g() pure public returns (bytes4) {
-				C x = C(0x123);
-				return x.f.selector;
 			}
 		}
 	)";

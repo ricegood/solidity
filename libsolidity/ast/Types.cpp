@@ -131,28 +131,28 @@ namespace
 
 string parenthesizeIdentifier(string const& _internal)
 {
-	return "(" + _internal + ")";
+	return "$_" + _internal + "_$";
 }
 
 template <class Range>
 string identifierList(Range const&& _list)
 {
-	return parenthesizeIdentifier(boost::algorithm::join(_list, ","));
+	return parenthesizeIdentifier(boost::algorithm::join(_list, "_$_"));
 }
 
-string richIdentifier(TypePointer const& _type)
+string identifier(TypePointer const& _type)
 {
-	return _type ? _type->richIdentifier() : "";
+	return _type ? _type->identifier() : "";
 }
 
 string identifierList(vector<TypePointer> const& _list)
 {
-	return identifierList(_list | boost::adaptors::transformed(richIdentifier));
+	return identifierList(_list | boost::adaptors::transformed(identifier));
 }
 
 string identifierList(TypePointer const& _type)
 {
-	return parenthesizeIdentifier(richIdentifier(_type));
+	return parenthesizeIdentifier(identifier(_type));
 }
 
 string identifierList(TypePointer const& _type1, TypePointer const& _type2)
@@ -165,20 +165,9 @@ string identifierList(TypePointer const& _type1, TypePointer const& _type2)
 
 string parenthesizeUserIdentifier(string const& _internal)
 {
-	return parenthesizeIdentifier(_internal);
+	return parenthesizeIdentifier(boost::algorithm::replace_all_copy(_internal, "$", "$$$"));
 }
 
-}
-
-string Type::escapeIdentifier(string const& _identifier)
-{
-	string ret = _identifier;
-	// FIXME: should be _$$$_
-	boost::algorithm::replace_all(ret, "$", "$$$");
-	boost::algorithm::replace_all(ret, ",", "_$_");
-	boost::algorithm::replace_all(ret, "(", "$_");
-	boost::algorithm::replace_all(ret, ")", "_$");
-	return ret;
 }
 
 TypePointer Type::fromElementaryTypeName(ElementaryTypeNameToken const& _type)
@@ -345,7 +334,7 @@ IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 	);
 }
 
-string IntegerType::richIdentifier() const
+string IntegerType::identifier() const
 {
 	if (isAddress())
 		return "t_address";
@@ -515,7 +504,7 @@ FixedPointType::FixedPointType(int _totalBits, int _fractionalDigits, FixedPoint
 	);
 }
 
-string FixedPointType::richIdentifier() const
+string FixedPointType::identifier() const
 {
 	return "t_" + string(isSigned() ? "" : "u") + "fixed" + std::to_string(m_totalBits) + "x" + std::to_string(m_fractionalDigits);
 }
@@ -947,7 +936,7 @@ TypePointer RationalNumberType::binaryOperatorResult(Token::Value _operator, Typ
 	}
 }
 
-string RationalNumberType::richIdentifier() const
+string RationalNumberType::identifier() const
 {
 	return "t_rational_" + m_value.numerator().str() + "_by_" + m_value.denominator().str();
 }
@@ -960,25 +949,11 @@ bool RationalNumberType::operator==(Type const& _other) const
 	return m_value == other.m_value;
 }
 
-string RationalNumberType::bigintToReadableString(dev::bigint const& _num)
-{
-	string str = _num.str();
-	if (str.size() > 32)
-	{
-		int omitted = str.size() - 8;
-		str = str.substr(0, 4) + "...(" + to_string(omitted) + " digits omitted)..." + str.substr(str.size() - 4, 4);
-	}
-	return str;
-}
-
 string RationalNumberType::toString(bool) const
 {
 	if (!isFractional())
-		return "int_const " + bigintToReadableString(m_value.numerator());
-
-	string numerator = bigintToReadableString(m_value.numerator());
-	string denominator = bigintToReadableString(m_value.denominator());
-	return "rational_const " + numerator + " / " + denominator;
+		return "int_const " + m_value.numerator().str();
+	return "rational_const " + m_value.numerator().str() + '/' + m_value.denominator().str();
 }
 
 u256 RationalNumberType::literalValue(Literal const*) const
@@ -1088,7 +1063,7 @@ bool StringLiteralType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 		return false;
 }
 
-string StringLiteralType::richIdentifier() const
+string StringLiteralType::identifier() const
 {
 	// Since we have to return a valid identifier and the string itself may contain
 	// anything, we hash it.
@@ -1188,7 +1163,7 @@ MemberList::MemberMap FixedBytesType::nativeMembers(const ContractDefinition*) c
 	return MemberList::MemberMap{MemberList::Member{"length", make_shared<IntegerType>(8)}};
 }
 
-string FixedBytesType::richIdentifier() const
+string FixedBytesType::identifier() const
 {
 	return "t_bytes" + std::to_string(m_bytes);
 }
@@ -1381,7 +1356,7 @@ bool ArrayType::isExplicitlyConvertibleTo(const Type& _convertTo) const
 	return true;
 }
 
-string ArrayType::richIdentifier() const
+string ArrayType::identifier() const
 {
 	string id;
 	if (isString())
@@ -1615,7 +1590,7 @@ TypePointer ArrayType::copyForLocation(DataLocation _location, bool _isPointer) 
 	return copy;
 }
 
-string ContractType::richIdentifier() const
+string ContractType::identifier() const
 {
 	return (m_super ? "t_super" : "t_contract") + parenthesizeUserIdentifier(m_contract.name()) + std::to_string(m_contract.id());
 }
@@ -1767,7 +1742,7 @@ bool StructType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 	return this->m_struct == convertTo.m_struct;
 }
 
-string StructType::richIdentifier() const
+string StructType::identifier() const
 {
 	return "t_struct" + parenthesizeUserIdentifier(m_struct.name()) + std::to_string(m_struct.id()) + identifierLocationSuffix();
 }
@@ -1999,7 +1974,7 @@ TypePointer EnumType::unaryOperatorResult(Token::Value _operator) const
 	return _operator == Token::Delete ? make_shared<TupleType>() : TypePointer();
 }
 
-string EnumType::richIdentifier() const
+string EnumType::identifier() const
 {
 	return "t_enum" + parenthesizeUserIdentifier(m_enum.name()) + std::to_string(m_enum.id());
 }
@@ -2085,7 +2060,7 @@ bool TupleType::isImplicitlyConvertibleTo(Type const& _other) const
 		return false;
 }
 
-string TupleType::richIdentifier() const
+string TupleType::identifier() const
 {
 	return "t_tuple" + identifierList(components());
 }
@@ -2164,19 +2139,32 @@ FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal
 	m_stateMutability(_function.stateMutability()),
 	m_declaration(&_function)
 {
+	TypePointers params;
+	vector<string> paramNames;
+	TypePointers retParams;
+	vector<string> retParamNames;
+
 	if (_isInternal && m_stateMutability == StateMutability::Payable)
 		m_stateMutability = StateMutability::NonPayable;
 
+	params.reserve(_function.parameters().size());
+	paramNames.reserve(_function.parameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.parameters())
 	{
-		m_parameterNames.push_back(var->name());
-		m_parameterTypes.push_back(var->annotation().type);
+		paramNames.push_back(var->name());
+		params.push_back(var->annotation().type);
 	}
+	retParams.reserve(_function.returnParameters().size());
+	retParamNames.reserve(_function.returnParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.returnParameters())
 	{
-		m_returnParameterNames.push_back(var->name());
-		m_returnParameterTypes.push_back(var->annotation().type);
+		retParamNames.push_back(var->name());
+		retParams.push_back(var->annotation().type);
 	}
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
+	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
 }
 
 FunctionType::FunctionType(VariableDeclaration const& _varDecl):
@@ -2184,14 +2172,16 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 	m_stateMutability(StateMutability::View),
 	m_declaration(&_varDecl)
 {
+	TypePointers paramTypes;
+	vector<string> paramNames;
 	auto returnType = _varDecl.annotation().type;
 
 	while (true)
 	{
 		if (auto mappingType = dynamic_cast<MappingType const*>(returnType.get()))
 		{
-			m_parameterTypes.push_back(mappingType->keyType());
-			m_parameterNames.push_back("");
+			paramTypes.push_back(mappingType->keyType());
+			paramNames.push_back("");
 			returnType = mappingType->valueType();
 		}
 		else if (auto arrayType = dynamic_cast<ArrayType const*>(returnType.get()))
@@ -2200,13 +2190,15 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 				// Return byte arrays as as whole.
 				break;
 			returnType = arrayType->baseType();
-			m_parameterNames.push_back("");
-			m_parameterTypes.push_back(make_shared<IntegerType>(256));
+			paramNames.push_back("");
+			paramTypes.push_back(make_shared<IntegerType>(256));
 		}
 		else
 			break;
 	}
 
+	TypePointers retParams;
+	vector<string> retParamNames;
 	if (auto structType = dynamic_cast<StructType const*>(returnType.get()))
 	{
 		for (auto const& member: structType->members(nullptr))
@@ -2217,22 +2209,24 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 				if (auto arrayType = dynamic_cast<ArrayType const*>(member.type.get()))
 					if (!arrayType->isByteArray())
 						continue;
-				m_returnParameterTypes.push_back(ReferenceType::copyForLocationIfReference(
-					DataLocation::Memory,
-					member.type
-				));
-				m_returnParameterNames.push_back(member.name);
+				retParams.push_back(member.type);
+				retParamNames.push_back(member.name);
 			}
 		}
 	}
 	else
 	{
-		m_returnParameterTypes.push_back(ReferenceType::copyForLocationIfReference(
+		retParams.push_back(ReferenceType::copyForLocationIfReference(
 			DataLocation::Memory,
 			returnType
 		));
-		m_returnParameterNames.push_back("");
+		retParamNames.push_back("");
 	}
+
+	swap(paramTypes, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
+	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
 }
 
 FunctionType::FunctionType(EventDefinition const& _event):
@@ -2240,11 +2234,17 @@ FunctionType::FunctionType(EventDefinition const& _event):
 	m_stateMutability(StateMutability::NonPayable),
 	m_declaration(&_event)
 {
+	TypePointers params;
+	vector<string> paramNames;
+	params.reserve(_event.parameters().size());
+	paramNames.reserve(_event.parameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _event.parameters())
 	{
-		m_parameterNames.push_back(var->name());
-		m_parameterTypes.push_back(var->annotation().type);
+		paramNames.push_back(var->name());
+		params.push_back(var->annotation().type);
 	}
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
 }
 
 FunctionType::FunctionType(FunctionTypeName const& _typeName):
@@ -2320,7 +2320,7 @@ TypePointers FunctionType::parameterTypes() const
 	return TypePointers(m_parameterTypes.cbegin() + 1, m_parameterTypes.cend());
 }
 
-string FunctionType::richIdentifier() const
+string FunctionType::identifier() const
 {
 	string id = "t_function_";
 	switch (m_kind)
@@ -2813,7 +2813,7 @@ ASTPointer<ASTString> FunctionType::documentation() const
 	return ASTPointer<ASTString>();
 }
 
-string MappingType::richIdentifier() const
+string MappingType::identifier() const
 {
 	return "t_mapping" + identifierList(m_keyType, m_valueType);
 }
@@ -2836,7 +2836,7 @@ string MappingType::canonicalName() const
 	return "mapping(" + keyType()->canonicalName() + " => " + valueType()->canonicalName() + ")";
 }
 
-string TypeType::richIdentifier() const
+string TypeType::identifier() const
 {
 	return "t_type" + identifierList(actualType());
 }
@@ -2921,7 +2921,7 @@ u256 ModifierType::storageSize() const
 	solAssert(false, "Storage size of non-storable type type requested.");
 }
 
-string ModifierType::richIdentifier() const
+string ModifierType::identifier() const
 {
 	return "t_modifier" + identifierList(m_parameterTypes);
 }
@@ -2950,7 +2950,7 @@ string ModifierType::toString(bool _short) const
 	return name + ")";
 }
 
-string ModuleType::richIdentifier() const
+string ModuleType::identifier() const
 {
 	return "t_module_" + std::to_string(m_sourceUnit.id());
 }
@@ -2976,7 +2976,7 @@ string ModuleType::toString(bool) const
 	return string("module \"") + m_sourceUnit.annotation().path + string("\"");
 }
 
-string MagicType::richIdentifier() const
+string MagicType::identifier() const
 {
 	switch (m_kind)
 	{

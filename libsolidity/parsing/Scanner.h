@@ -78,6 +78,12 @@ public:
 	char advanceAndGet(size_t _chars = 1);
 	char rollback(size_t _amount);
 
+	// DEBUG //
+	void insertSource(std::string s){
+		m_source.insert(m_position, s);
+	}
+	///////////
+
 	void reset() { m_position = 0; }
 
 	std::string const& source() const { return m_source; }
@@ -104,6 +110,44 @@ public:
 
 	explicit Scanner(CharStream const& _source = CharStream(), std::string const& _sourceName = "") { reset(_source, _sourceName); }
 
+	// DEBUG //
+	void addString(std::string s){
+		for(unsigned int i = 0; i < s.length(); i++){
+			m_currentToken.literal.push_back(s.at(i));
+		}
+	}
+
+	void addChar(char c){
+		m_currentToken.literal.push_back(c);
+	}
+
+	void addSource(std::string s){
+		m_source.insertSource(s);
+	}
+
+	void updateNextToken(){
+		scanToken();
+	}
+
+	void addSourceAndScan(std::string s){
+		addSource(s);
+		scanToken();
+	}
+
+	bool getChangeVariable(){
+		return changeVariable;
+	}
+
+	void setChangeVariable(bool b){
+		changeVariable = b;
+	}
+
+	void rollBackToken(int offset){
+		// offset 만큼 더 rollback 된다
+		rollback(sourcePos() - currentLocation().start + offset);
+	}
+	//////////
+
 	std::string source() const { return m_source.source(); }
 
 	/// Resets the scanner as if newly constructed with _source and _sourceName as input.
@@ -120,6 +164,9 @@ public:
 	/// @returns the current token
 	Token::Value currentToken() const
 	{
+		//DEBUG//
+		std::cout << "Current Token: " << m_currentToken.literal << " (" << std::string(Token::name(m_currentToken.token)) << ")" << std::endl;
+		/////////
 		return m_currentToken.token;
 	}
 	ElementaryTypeNameToken currentElementaryTypeNameToken() const
@@ -139,7 +186,9 @@ public:
 	///@name Information about the current comment token
 
 	SourceLocation currentCommentLocation() const { return m_skippedComment.location; }
-	std::string const& currentCommentLiteral() const { return m_skippedComment.literal; }
+	std::string const& currentCommentLiteral() const {
+	 return m_skippedComment.literal; 
+	}
 	/// Called by the parser during FunctionDefinition parsing to clear the current comment
 	void clearCurrentCommentLiteral() { m_skippedComment.literal.clear(); }
 
@@ -173,6 +222,11 @@ private:
 		std::string literal;
 		std::tuple<unsigned, unsigned> extendedTokenInfo;
 	};
+
+	// DEBUG //
+	bool changeVariable = false;
+	///////////
+
 
 	///@{
 	///@name Literal buffer support

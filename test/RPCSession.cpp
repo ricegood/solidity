@@ -23,7 +23,8 @@
 
 #include <libdevcore/CommonData.h>
 
-#include <libdevcore/JSON.h>
+#include <json/reader.h>
+#include <json/writer.h>
 
 #include <string>
 #include <stdio.h>
@@ -215,7 +216,7 @@ string RPCSession::personal_newAccount(string const& _password)
 
 void RPCSession::test_setChainParams(vector<string> const& _accounts)
 {
-	static string const c_configString = R"(
+	static std::string const c_configString = R"(
 	{
 		"sealEngine": "NoProof",
 		"params": {
@@ -248,10 +249,10 @@ void RPCSession::test_setChainParams(vector<string> const& _accounts)
 	)";
 
 	Json::Value config;
-	BOOST_REQUIRE(jsonParseStrict(c_configString, config));
+	BOOST_REQUIRE(Json::Reader().parse(c_configString, config));
 	for (auto const& account: _accounts)
 		config["accounts"][account]["wei"] = "0x100000000000000000000000000000000000000000";
-	test_setChainParams(jsonCompactPrint(config));
+	test_setChainParams(Json::FastWriter().write(config));
 }
 
 void RPCSession::test_setChainParams(string const& _config)
@@ -327,7 +328,7 @@ Json::Value RPCSession::rpcCall(string const& _methodName, vector<string> const&
 	BOOST_TEST_MESSAGE("Reply: " + reply);
 
 	Json::Value result;
-	BOOST_REQUIRE(jsonParseStrict(reply, result));
+	BOOST_REQUIRE(Json::Reader().parse(reply, result, false));
 
 	if (result.isMember("error"))
 	{
@@ -370,5 +371,6 @@ string RPCSession::TransactionData::toJson() const
 	json["gasprice"] = gasPrice;
 	json["value"] = value;
 	json["data"] = data;
-	return jsonCompactPrint(json);
+	return Json::FastWriter().write(json);
+
 }

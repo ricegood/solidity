@@ -219,7 +219,7 @@ This means the following source mappings represent the same information:
 
 ``1:2:1;1:9:1;2:1:2;2:1:2;2:1:2``
 
-``1:2:1;:9;2:1:2;;``
+``1:2:1;:9;2::2;;``
 
 ***************
 Tips and Tricks
@@ -230,10 +230,7 @@ Tips and Tricks
 * Make your state variables public - the compiler will create :ref:`getters <visibility-and-getters>` for you automatically.
 * If you end up checking conditions on input or state a lot at the beginning of your functions, try using :ref:`modifiers`.
 * If your contract has a function called ``send`` but you want to use the built-in send-function, use ``address(contractVariable).send(amount)``.
-* Initialize storage structs with a single assignment: ``x = MyStruct({a: 1, b: 2});``
-
-.. note::
-    If the storage struct has tightly packed properties, initialize it with separate assignments: ``x.a = 1; x.b = 2;``. In this way it will be easier for the optimizer to update storage in one go, thus making assignment cheaper.
+* Initialise storage structs with a single assignment: ``x = MyStruct({a: 1, b: 2});``
 
 **********
 Cheatsheet
@@ -330,8 +327,8 @@ Global Variables
 - ``sha256(...) returns (bytes32)``: compute the SHA-256 hash of the :ref:`(tightly packed) arguments <abi_packed_mode>`
 - ``ripemd160(...) returns (bytes20)``: compute the RIPEMD-160 hash of the :ref:`(tightly packed) arguments <abi_packed_mode>`
 - ``ecrecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) returns (address)``: recover address associated with the public key from elliptic curve signature, return zero on error
-- ``addmod(uint x, uint y, uint k) returns (uint)``: compute ``(x + y) % k`` where the addition is performed with arbitrary precision and does not wrap around at ``2**256``. Assert that ``k != 0`` starting from version 0.5.0.
-- ``mulmod(uint x, uint y, uint k) returns (uint)``: compute ``(x * y) % k`` where the multiplication is performed with arbitrary precision and does not wrap around at ``2**256``. Assert that ``k != 0`` starting from version 0.5.0.
+- ``addmod(uint x, uint y, uint k) returns (uint)``: compute ``(x + y) % k`` where the addition is performed with arbitrary precision and does not wrap around at ``2**256``
+- ``mulmod(uint x, uint y, uint k) returns (uint)``: compute ``(x * y) % k`` where the multiplication is performed with arbitrary precision and does not wrap around at ``2**256``
 - ``this`` (current contract's type): the current contract, explicitly convertible to ``address``
 - ``super``: the contract one level higher in the inheritance hierarchy
 - ``selfdestruct(address recipient)``: destroy the current contract, sending its funds to the given address

@@ -136,10 +136,8 @@ BOOST_AUTO_TEST_CASE(non_overlapping_filtered_costs)
 			{
 				BOOST_CHECK_MESSAGE(false, "Source locations should not overlap!");
 				auto scannerFromSource = [&](string const& _sourceName) -> Scanner const& { return m_compiler.scanner(_sourceName); };
-				SourceReferenceFormatter formatter(cout, scannerFromSource);
-
-				formatter.printSourceLocation(&first->first->location());
-				formatter.printSourceLocation(&second->first->location());
+				SourceReferenceFormatter::printSourceLocation(cout, &first->first->location(), scannerFromSource);
+				SourceReferenceFormatter::printSourceLocation(cout, &second->first->location(), scannerFromSource);
 			}
 	}
 }

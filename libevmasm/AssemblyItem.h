@@ -46,8 +46,7 @@ enum AssemblyItemType {
 	PushProgramSize,
 	Tag,
 	PushData,
-	PushLibraryAddress, ///< Push a currently unknown address of another (library) contract.
-	PushDeployTimeAddress ///< Push an address to be filled at deploy time. Should not be touched by the optimizer.
+	PushLibraryAddress ///< Push a currently unknown address of another (library) contract.
 };
 
 class Assembly;

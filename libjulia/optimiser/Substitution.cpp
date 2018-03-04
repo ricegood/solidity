@@ -26,14 +26,14 @@ using namespace std;
 using namespace dev;
 using namespace dev::julia;
 
-Expression Substitution::translate(Expression const& _expression)
+Statement Substitution::translate(Statement const& _statement)
 {
-	if (_expression.type() == typeid(Identifier))
+	if (_statement.type() == typeid(Identifier))
 	{
-		string const& name = boost::get<Identifier>(_expression).name;
+		string const& name = boost::get<Identifier>(_statement).name;
 		if (m_substitutions.count(name))
 			// No recursive substitution
 			return ASTCopier().translate(*m_substitutions.at(name));
 	}
-	return ASTCopier::translate(_expression);
+	return ASTCopier::translate(_statement);
 }

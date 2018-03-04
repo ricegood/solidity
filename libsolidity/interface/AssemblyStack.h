@@ -51,7 +51,7 @@ struct MachineAssemblyObject
 class AssemblyStack
 {
 public:
-	enum class Language { JULIA, Assembly, StrictAssembly };
+	enum class Language { JULIA, Assembly };
 	enum class Machine { EVM, EVM15, eWasm };
 
 	explicit AssemblyStack(Language _language = Language::Assembly):

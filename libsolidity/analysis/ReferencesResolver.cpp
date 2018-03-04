@@ -43,67 +43,11 @@ bool ReferencesResolver::resolve(ASTNode const& _root)
 	return !m_errorOccurred;
 }
 
-bool ReferencesResolver::visit(Block const& _block)
-{
-	if (!m_resolveInsideCode)
-		return false;
-	m_experimental050Mode = _block.sourceUnit().annotation().experimentalFeatures.count(ExperimentalFeature::V050);
-	// C99-scoped variables
-	if (m_experimental050Mode)
-		m_resolver.setScope(&_block);
-	return true;
-}
-
-void ReferencesResolver::endVisit(Block const& _block)
-{
-	if (!m_resolveInsideCode)
-		return;
-
-	// C99-scoped variables
-	if (m_experimental050Mode)
-		m_resolver.setScope(_block.scope());
-}
-
-bool ReferencesResolver::visit(ForStatement const& _for)
-{
-	if (!m_resolveInsideCode)
-		return false;
-	m_experimental050Mode = _for.sourceUnit().annotation().experimentalFeatures.count(ExperimentalFeature::V050);
-	// C99-scoped variables
-	if (m_experimental050Mode)
-		m_resolver.setScope(&_for);
-	return true;
-}
-
-void ReferencesResolver::endVisit(ForStatement const& _for)
-{
-	if (!m_resolveInsideCode)
-		return;
-	if (m_experimental050Mode)
-		m_resolver.setScope(_for.scope());
-}
-
-void ReferencesResolver::endVisit(VariableDeclarationStatement const& _varDeclStatement)
-{
-	if (!m_resolveInsideCode)
-		return;
-	if (m_experimental050Mode)
-		for (auto const& var: _varDeclStatement.declarations())
-			if (var)
-				m_resolver.activateVariable(var->name());
-}
-
 bool ReferencesResolver::visit(Identifier const& _identifier)
 {
 	auto declarations = m_resolver.nameFromCurrentScope(_identifier.name());
 	if (declarations.empty())
-	{
-		string suggestions = m_resolver.similarNameSuggestions(_identifier.name());
-		string errorMessage =
-			"Undeclared identifier." +
-			(suggestions.empty()? "": " Did you mean " + std::move(suggestions) + "?");
-		declarationError(_identifier.location(), errorMessage);
-	}
+		fatalDeclarationError(_identifier.location(), "Undeclared identifier.");
 	else if (declarations.size() == 1)
 		_identifier.annotation().referencedDeclaration = declarations.front();
 	else
@@ -146,10 +90,7 @@ void ReferencesResolver::endVisit(UserDefinedTypeName const& _typeName)
 {
 	Declaration const* declaration = m_resolver.pathFromCurrentScope(_typeName.namePath());
 	if (!declaration)
-	{
-		declarationError(_typeName.location(), "Identifier not found or not unique.");
-		return;
-	}
+		fatalDeclarationError(_typeName.location(), "Identifier not found or not unique.");
 
 	_typeName.annotation().referencedDeclaration = declaration;
 
@@ -160,7 +101,7 @@ void ReferencesResolver::endVisit(UserDefinedTypeName const& _typeName)
 	else if (ContractDefinition const* contract = dynamic_cast<ContractDefinition const*>(declaration))
 		_typeName.annotation().type = make_shared<ContractType>(*contract);
 	else
-		typeError(_typeName.location(), "Name has to refer to a struct, enum or contract.");
+		fatalTypeError(_typeName.location(), "Name has to refer to a struct, enum or contract.");
 }
 
 void ReferencesResolver::endVisit(FunctionTypeName const& _typeName)
@@ -171,25 +112,17 @@ void ReferencesResolver::endVisit(FunctionTypeName const& _typeName)
 	case VariableDeclaration::Visibility::External:
 		break;
 	default:
-		typeError(_typeName.location(), "Invalid visibility, can only be \"external\" or \"internal\".");
-		return;
+		fatalTypeError(_typeName.location(), "Invalid visibility, can only be \"external\" or \"internal\".");
 	}
 
 	if (_typeName.isPayable() && _typeName.visibility() != VariableDeclaration::Visibility::External)
-	{
-		typeError(_typeName.location(), "Only external function types can be payable.");
-		return;
-	}
-
+		fatalTypeError(_typeName.location(), "Only external function types can be payable.");
 	if (_typeName.visibility() == VariableDeclaration::Visibility::External)
 		for (auto const& t: _typeName.parameterTypes() + _typeName.returnParameterTypes())
 		{
 			solAssert(t->annotation().type, "Type not set for parameter.");
 			if (!t->annotation().type->canBeUsedExternally(false))
-			{
-				typeError(t->location(), "Internal type cannot be used for external function type.");
-				return;
-			}
+				fatalTypeError(t->location(), "Internal type cannot be used for external function type.");
 		}
 
 	_typeName.annotation().type = make_shared<FunctionType>(_typeName);
@@ -209,11 +142,6 @@ void ReferencesResolver::endVisit(Mapping const& _typeName)
 void ReferencesResolver::endVisit(ArrayTypeName const& _typeName)
 {
 	TypePointer baseType = _typeName.baseType().annotation().type;
-	if (!baseType)
-	{
-		solAssert(!m_errorReporter.errors().empty(), "");
-		return;
-	}
 	if (baseType->storageBytes() == 0)
 		fatalTypeError(_typeName.baseType().location(), "Illegal base type of storage size zero for array.");
 	if (Expression const* length = _typeName.length())
@@ -279,7 +207,7 @@ bool ReferencesResolver::visit(InlineAssembly const& _inlineAssembly)
 
 	// Will be re-generated later with correct information
 	assembly::AsmAnalysisInfo analysisInfo;
-	assembly::AsmAnalyzer(analysisInfo, errorsIgnored, assembly::AsmFlavour::Loose, resolver).analyze(_inlineAssembly.operations());
+	assembly::AsmAnalyzer(analysisInfo, errorsIgnored, false, resolver).analyze(_inlineAssembly.operations());
 	return false;
 }
 
@@ -394,13 +322,17 @@ void ReferencesResolver::endVisit(VariableDeclaration const& _variable)
 			type = ref->copyForLocation(typeLoc, isPointer);
 		}
 		else if (varLoc != Location::Default && !ref)
-			typeError(_variable.location(), "Storage location can only be given for array or struct types.");
+			fatalTypeError(_variable.location(), "Storage location can only be given for array or struct types.");
 
-		_variable.annotation().type = type;
+		if (!type)
+			fatalTypeError(_variable.location(), "Invalid type name.");
+
 	}
 	else if (!_variable.canHaveAutoType())
-		typeError(_variable.location(), "Explicit type needed.");
+		fatalTypeError(_variable.location(), "Explicit type needed.");
 	// otherwise we have a "var"-declaration whose type is resolved by the first assignment
+
+	_variable.annotation().type = type;
 }
 
 void ReferencesResolver::typeError(SourceLocation const& _location, string const& _description)

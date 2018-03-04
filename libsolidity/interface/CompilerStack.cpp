@@ -99,6 +99,9 @@ void CompilerStack::reset(bool _keepSources)
 
 bool CompilerStack::addSource(string const& _name, string const& _content, bool _isLibrary)
 {
+	// DEBUG //
+	std::cout << "# # add source to m_sources" << endl;
+	///////////
 	bool existed = m_sources.count(_name) != 0;
 	reset(true);
 	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
@@ -119,25 +122,53 @@ bool CompilerStack::parse()
 		m_errorReporter.warning("This is a pre-release compiler version, please do not use it in production.");
 
 	vector<string> sourcesToParse;
-	for (auto const& s: m_sources)
+	for (auto const& s: m_sources){
 		sourcesToParse.push_back(s.first);
+	}
+
+	// DEBUG //
+	std::cout << "sourcesToParse SIZE : " << sourcesToParse.size() << "\r\n" << endl;
+	///////////
+
 	for (size_t i = 0; i < sourcesToParse.size(); ++i)
 	{
+		// DEBUG //
+		std::cout << "FILE NAME : " << sourcesToParse[i] << endl;
+		///////////
+
 		string const& path = sourcesToParse[i];
 		Source& source = m_sources[path];
 		source.scanner->reset();
+
+		// DEBUG //
+		std::cout << "==== Start Parsing in CompilerStack.cpp ====" << endl;
+		///////////
+
 		source.ast = Parser(m_errorReporter).parse(source.scanner);
+
+		// DEBUG //
+		std::cout << "============= End Parsing =============\r\n" << endl;
+		///////////
+
 		if (!source.ast)
 			solAssert(!Error::containsOnlyWarnings(m_errorReporter.errors()), "Parser returned null but did not report error.");
 		else
 		{
 			source.ast->annotation().path = path;
+
 			for (auto const& newSource: loadMissingSources(*source.ast, path))
 			{
+				// DEBUG //
+				std::cout << "============= sourcesToParse_pushback =============" << endl;
+				///////////
 				string const& newPath = newSource.first;
 				string const& newContents = newSource.second;
+				// DEBUG //
+				std::cout << "newPath : " << newPath << endl;
+				std::cout << "newContents : " << newContents << endl;
+				///////////
 				m_sources[newPath].scanner = make_shared<Scanner>(CharStream(newContents), newPath);
-				sourcesToParse.push_back(newPath);
+				sourcesToParse.push_back(newPath); // Q.얜 그 뒤에서 어디 쓰지도 않는데 왜?
 			}
 		}
 	}
@@ -152,26 +183,51 @@ bool CompilerStack::parse()
 
 bool CompilerStack::analyze()
 {
-	if (m_stackState != ParsingSuccessful)
+	// DEBUG //
+	std::cout << "====== Start analyzing in CompilerStack.cpp ======" << endl;
+	///////////
+
+	if (m_stackState != ParsingSuccessful){
+		// DEBUG //
+		std::cout << "## Not ParsingSuccessful" << endl;
+		///////////
+
+
 		return false;
+	}
+
+	// topological sorting of the import graph, cutting potential cycles (m_sourceOrder)
 	resolveImports();
 
 	bool noErrors = true;
 	SyntaxChecker syntaxChecker(m_errorReporter);
-	for (Source const* source: m_sourceOrder)
-		if (!syntaxChecker.checkSyntax(*source->ast))
+	for (Source const* source: m_sourceOrder){
+		if (!syntaxChecker.checkSyntax(*source->ast)){
+			// DEBUG //
+			std::cout << "## Syntax Checker Error" << endl;
+			///////////
 			noErrors = false;
+		}
+	}
 
 	DocStringAnalyser docStringAnalyser(m_errorReporter);
 	for (Source const* source: m_sourceOrder)
-		if (!docStringAnalyser.analyseDocStrings(*source->ast))
+		if (!docStringAnalyser.analyseDocStrings(*source->ast)){
+			// DEBUG //
+			std::cout << "## docString Analyser Error" << endl;
+			///////////
 			noErrors = false;
+		}
+
+	// ===== Declaration Container ===== //
 
 	m_globalContext = make_shared<GlobalContext>();
 	NameAndTypeResolver resolver(m_globalContext->declarations(), m_scopes, m_errorReporter);
 	for (Source const* source: m_sourceOrder)
 		if (!resolver.registerDeclarations(*source->ast))
 			return false;
+
+	///////////////////////////////////////
 
 	map<string, SourceUnit const*> sourceUnitsByName;
 	for (auto& source: m_sources)
@@ -180,14 +236,18 @@ bool CompilerStack::analyze()
 		if (!resolver.performImports(*source->ast, sourceUnitsByName))
 			return false;
 
+
+	// ===== Error Detection start =====
 	for (Source const* source: m_sourceOrder)
-		for (ASTPointer<ASTNode> const& node: source->ast->nodes())
+		for (ASTPointer<ASTNode> const& node: source->ast->nodes()){
+
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 			{
 				m_globalContext->setCurrentContract(*contract);
 				if (!resolver.updateDeclaration(*m_globalContext->currentThis())) return false;
 				if (!resolver.updateDeclaration(*m_globalContext->currentSuper())) return false;
-				if (!resolver.resolveNamesAndTypes(*contract)) return false;
+				if (!resolver.resolveNamesAndTypes(*contract))
+					return false;
 
 				// Note that we now reference contracts by their fully qualified names, and
 				// thus contracts can only conflict if declared in the same source file.  This
@@ -197,6 +257,8 @@ bool CompilerStack::analyze()
 				if (m_contracts.find(contract->fullyQualifiedName()) == m_contracts.end())
 					m_contracts[contract->fullyQualifiedName()].contract = contract;
 			}
+		}
+	////////////////////////////////////////
 
 	TypeChecker typeChecker(m_errorReporter);
 	for (Source const* source: m_sourceOrder)
@@ -204,7 +266,7 @@ bool CompilerStack::analyze()
 			if (ContractDefinition* contract = dynamic_cast<ContractDefinition*>(node.get()))
 				if (!typeChecker.checkTypeRequirements(*contract))
 					noErrors = false;
-
+				
 	if (noErrors)
 	{
 		PostTypeChecker postTypeChecker(m_errorReporter);
@@ -240,6 +302,10 @@ bool CompilerStack::analyze()
 
 	if (noErrors)
 	{
+		// DEBUG //
+		std::cout << "====== End analyzing in CompilerStack.cpp ======" << endl;
+		///////////
+
 		m_stackState = AnalysisSuccessful;
 		return true;
 	}
@@ -249,6 +315,10 @@ bool CompilerStack::analyze()
 
 bool CompilerStack::parseAndAnalyze()
 {
+	// DEBUG //
+	std::cout<< "====parseAndAnalyze====" << endl;
+	///////////
+
 	return parse() && analyze();
 }
 
@@ -262,6 +332,10 @@ bool CompilerStack::isRequestedContract(ContractDefinition const& _contract) con
 
 bool CompilerStack::compile()
 {
+	// DEBUG //
+	std::cout<< "======compile======" << endl;
+	///////////
+
 	if (m_stackState < AnalysisSuccessful)
 		if (!parseAndAnalyze())
 			return false;
@@ -279,6 +353,10 @@ bool CompilerStack::compile()
 
 void CompilerStack::link()
 {
+	// DEBUG //
+	std::cout << "==== link ====" << endl;
+	///////////
+
 	for (auto& contract: m_contracts)
 	{
 		contract.second.object.link(m_libraries);
@@ -311,6 +389,10 @@ eth::AssemblyItems const* CompilerStack::runtimeAssemblyItems(string const& _con
 
 string const* CompilerStack::sourceMapping(string const& _contractName) const
 {
+	// DEBUG //
+	std::cout << "==== sourceMapping ====" << endl;
+	///////////
+
 	Contract const& c = contract(_contractName);
 	if (!c.sourceMapping)
 	{
@@ -406,6 +488,10 @@ map<string, unsigned> CompilerStack::sourceIndices() const
 
 Json::Value const& CompilerStack::contractABI(string const& _contractName) const
 {
+	// DEBUG //
+	std::cout << "==== contractABI ====" << endl;
+	///////////
+
 	return contractABI(contract(_contractName));
 }
 
@@ -479,6 +565,10 @@ string const& CompilerStack::metadata(string const& _contractName) const
 
 Scanner const& CompilerStack::scanner(string const& _sourceName) const
 {
+	// DEBUG //
+	std::cout << "==== scanner ====" << endl;
+	///////////
+
 	if (m_stackState < SourcesSet)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("No sources set."));
 
@@ -487,6 +577,10 @@ Scanner const& CompilerStack::scanner(string const& _sourceName) const
 
 SourceUnit const& CompilerStack::ast(string const& _sourceName) const
 {
+	// DEBUG //
+	std::cout << "==== ast ====" << endl;
+	///////////
+
 	if (m_stackState < ParsingSuccessful)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Parsing was not successful."));
 
@@ -532,7 +626,7 @@ tuple<int, int, int, int> CompilerStack::positionFromSourceLocation(SourceLocati
 }
 
 StringMap CompilerStack::loadMissingSources(SourceUnit const& _ast, std::string const& _sourcePath)
-{
+{	
 	StringMap newSources;
 	for (auto const& node: _ast.nodes())
 		if (ImportDirective const* import = dynamic_cast<ImportDirective*>(node.get()))
@@ -561,6 +655,7 @@ StringMap CompilerStack::loadMissingSources(SourceUnit const& _ast, std::string 
 				continue;
 			}
 		}
+
 	return newSources;
 }
 
@@ -628,9 +723,11 @@ void CompilerStack::resolveImports()
 		sourceOrder.push_back(_source);
 	};
 
-	for (auto const& sourcePair: m_sources)
-		if (!sourcePair.second.isLibrary)
+	for (auto const& sourcePair: m_sources){
+		if (!sourcePair.second.isLibrary){
 			toposort(&sourcePair.second);
+		}
+	}
 
 	swap(m_sourceOrder, sourceOrder);
 }
@@ -668,6 +765,10 @@ void CompilerStack::compileContract(
 	map<ContractDefinition const*, eth::Assembly const*>& _compiledContracts
 )
 {
+	// DEBUG //
+	std::cout << "==== compileContract ====" << endl;
+	///////////
+
 	if (
 		_compiledContracts.count(&_contract) ||
 		!_contract.annotation().unimplementedFunctions.empty() ||
@@ -734,12 +835,9 @@ void CompilerStack::compileContract(
 
 	try
 	{
-		if (!_contract.isLibrary())
-		{
-			Compiler cloneCompiler(m_optimize, m_optimizeRuns);
-			cloneCompiler.compileClone(_contract, _compiledContracts);
-			compiledContract.cloneObject = cloneCompiler.assembledObject();
-		}
+		Compiler cloneCompiler(m_optimize, m_optimizeRuns);
+		cloneCompiler.compileClone(_contract, _compiledContracts);
+		compiledContract.cloneObject = cloneCompiler.assembledObject();
 	}
 	catch (eth::AssemblyException const&)
 	{
@@ -765,6 +863,10 @@ string const CompilerStack::lastContractName() const
 
 CompilerStack::Contract const& CompilerStack::contract(string const& _contractName) const
 {
+	// DEBUG //
+	std::cout << "==== contract ====" << endl;
+	///////////
+
 	if (m_contracts.empty())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("No compiled contracts found."));
 
@@ -797,6 +899,10 @@ CompilerStack::Contract const& CompilerStack::contract(string const& _contractNa
 
 CompilerStack::Source const& CompilerStack::source(string const& _sourceName) const
 {
+	// DEBUG //
+	std::cout << "==== source ====" << endl;
+	///////////
+
 	auto it = m_sources.find(_sourceName);
 	if (it == m_sources.end())
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Given source file not found."));
@@ -861,6 +967,10 @@ string CompilerStack::createMetadata(Contract const& _contract) const
 
 string CompilerStack::computeSourceMapping(eth::AssemblyItems const& _items) const
 {
+	// DEBUG //
+	std::cout << "==== computeSourceMapping ====" << endl;
+	///////////
+
 	string ret;
 	map<string, unsigned> sourceIndicesMap = sourceIndices();
 	int prevStart = -1;
@@ -947,6 +1057,10 @@ Json::Value gasToJson(GasEstimator::GasConsumption const& _gas)
 
 Json::Value CompilerStack::gasEstimates(string const& _contractName) const
 {
+	// DEBUG //
+	std::cout << "==== gasEstimates ====" << endl;
+	///////////
+
 	if (!assemblyItems(_contractName) && !runtimeAssemblyItems(_contractName))
 		return Json::Value();
 

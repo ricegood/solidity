@@ -112,111 +112,6 @@ No::
         }
     }
 
-.. _maximum_line_length:
-
-Maximum Line Length 
-===================
-
-Keeping lines under the `PEP 8 recommendation <https://www.python.org/dev/peps/pep-0008/#maximum-line-length>`_ of 79 (or 99) 
-characters helps readers easily parse the code.
-
-Wrapped lines should conform to the following guidelines.
-
-1. The first argument should not be attached to the opening parenthesis. 
-2. One, and only one, indent should be used.
-3. Each argument should fall on its own line.
-4. The terminating element, :code:`);`, should be placed on the final line by itself.
-
-Function Calls
-
-Yes::
-
-    thisFunctionCallIsReallyLong(
-        longArgument1, 
-        longArgument2, 
-        longArgument3
-    );
-
-No::
-
-    thisFunctionCallIsReallyLong(longArgument1, 
-                                  longArgument2, 
-                                  longArgument3
-    );
-                                  
-    thisFunctionCallIsReallyLong(longArgument1, 
-        longArgument2, 
-        longArgument3
-    );                                  
-                                  
-    thisFunctionCallIsReallyLong(
-        longArgument1, longArgument2,
-        longArgument3
-    );                                    
-
-    thisFunctionCallIsReallyLong(
-    longArgument1, 
-    longArgument2, 
-    longArgument3
-    );
-
-    thisFunctionCallIsReallyLong(
-        longArgument1, 
-        longArgument2, 
-        longArgument3);        
-
-Assignment Statements
-
-Yes::
-
-    thisIsALongNestedMapping[being][set][to_some_value] = someFunction(
-        argument1,
-        argument2,
-        argument3,
-        argument4
-    );
-
-No::
-
-    thisIsALongNestedMapping[being][set][to_some_value] = someFunction(argument1,
-                                                                       argument2,
-                                                                       argument3,
-                                                                       argument4);
-
-Event Definitions and Event Emitters
-
-Yes::
-
-    event LongAndLotsOfArgs(
-        adress sender,
-        adress recipient,
-        uint256 publicKey,
-        uint256 amount,
-        bytes32[] options
-    );
-
-    LongAndLotsOfArgs(
-        sender,
-        recipient,
-        publicKey,
-        amount,
-        options
-    );
-
-No::
-
-    event LongAndLotsOfArgs(adress sender,
-                            adress recipient,
-                            uint256 publicKey,
-                            uint256 amount,
-                            bytes32[] options);
-
-    LongAndLotsOfArgs(sender,
-                      recipient,
-                      publicKey,
-                      amount,
-                      options); 
-
 Source File Encoding
 ====================
 
@@ -496,7 +391,7 @@ function body to be kept on the same line as the function declaration.
 The closing brace should be at the same indentation level as the function
 declaration.
 
-The opening brace should be preceded by a single space.
+The opening brace should be preceeded by a single space.
 
 Yes::
 
@@ -526,21 +421,7 @@ No::
     function increment(uint x) public pure returns (uint) {
         return x + 1;}
 
-You should explicitly label the visibility of all functions, including constructors.  
-
-Yes::
-
-    function explicitlyPublic(uint val) public {
-        doSomething();
-    }
-
-No::
-
-    function implicitlyPublic(uint val) {
-        doSomething(); 
-    }
-
-The visibility modifier for a function should come before any custom
+The visibility modifiers for a function should come before any custom
 modifiers.
 
 Yes::
@@ -650,50 +531,6 @@ No::
         priced
         returns (address) {
         doSomething();
-    }
-
-Multiline output parameters and return statements should follow the same style recommended for wrapping long lines found in the :ref:`Maximum Line Length <maximum_line_length>` section.
-
-Yes::
-
-    function thisFunctionNameIsReallyLong(
-        address a,
-        address b,
-        address c
-    ) 
-        public 
-        returns (
-            address someAddressName, 
-            uint256 LongArgument, 
-            uint256 Argument
-        )
-    {    
-        doSomething()
-        
-        return (
-            veryLongReturnArg1, 
-            veryLongReturnArg2, 
-            veryLongReturnArg3
-        );
-    }
-
-No::
-
-    function thisFunctionNameIsReallyLong(
-        address a,
-        address b,
-        address c
-    ) 
-        public 
-        returns (address someAddressName, 
-                 uint256 LongArgument, 
-                 uint256 Argument)
-    {    
-        doSomething()
-        
-        return (veryLongReturnArg1, 
-                veryLongReturnArg1, 
-                veryLongReturnArg1);
     }
 
 For constructor functions on inherited contracts whose bases require arguments,
@@ -847,7 +684,7 @@ naming styles.
 * ``mixedCase`` (differs from CapitalizedWords by initial lowercase character!)
 * ``Capitalized_Words_With_Underscores``
 
-.. note:: When using initialisms in CapWords, capitalize all the letters of the initialisms. Thus HTTPServerError is better than HttpServerError. When using initialisms is mixedCase, capitalize all the letters of the initialisms, except keep the first one lower case if it is the beginning of the name. Thus xmlHTTPRequest is better than XMLHTTPRequest.
+.. note:: When using abbreviations in CapWords, capitalize all the letters of the abbreviation. Thus HTTPServerError is better than HttpServerError.
 
 
 Names to Avoid
@@ -867,12 +704,6 @@ Contract and Library Names
 Contracts and libraries should be named using the CapWords style. Examples: ``SimpleToken``, ``SmartBank``, ``CertificateHashRepository``, ``Player``.
 
 
-Struct Names
-==========================
-
-Structs should be named using the CapWords style. Examples: ``MyCoin``, ``Position``, ``PositionXY``.
-
-
 Event Names
 ===========
 
@@ -882,7 +713,7 @@ Events should be named using the CapWords style. Examples: ``Deposit``, ``Transf
 Function Names
 ==============
 
-Functions other than constructors should use mixedCase. Examples: ``getBalance``, ``transfer``, ``verifyOwner``, ``addMember``, ``changeOwner``.
+Functions should use mixedCase. Examples: ``getBalance``, ``transfer``, ``verifyOwner``, ``addMember``, ``changeOwner``.
 
 
 Function Argument Names

@@ -38,23 +38,22 @@ namespace solidity
 class Scanner; // forward
 class CompilerStack; // forward
 
-class SourceReferenceFormatter
+struct SourceReferenceFormatter
 {
 public:
 	using ScannerFromSourceNameFun = std::function<Scanner const&(std::string const&)>;
-
-	explicit SourceReferenceFormatter(
-		std::ostream& _stream,
-		ScannerFromSourceNameFun _scannerFromSourceName
-	):
-		m_stream(_stream),
-		m_scannerFromSourceName(std::move(_scannerFromSourceName))
-	{}
-
 	/// Prints source location if it is given.
-	void printSourceLocation(SourceLocation const* _location);
-	void printExceptionInformation(Exception const& _exception, std::string const& _name);
-
+	static void printSourceLocation(
+		std::ostream& _stream,
+		SourceLocation const* _location,
+		ScannerFromSourceNameFun const& _scannerFromSourceName
+	);
+	static void printExceptionInformation(
+		std::ostream& _stream,
+		Exception const& _exception,
+		std::string const& _name,
+		ScannerFromSourceNameFun const& _scannerFromSourceName
+	);
 	static std::string formatExceptionInformation(
 		Exception const& _exception,
 		std::string const& _name,
@@ -62,17 +61,16 @@ public:
 	)
 	{
 		std::ostringstream errorOutput;
-
-		SourceReferenceFormatter formatter(errorOutput, _scannerFromSourceName);
-		formatter.printExceptionInformation(_exception, _name);
+		printExceptionInformation(errorOutput, _exception, _name, _scannerFromSourceName);
 		return errorOutput.str();
 	}
 private:
 	/// Prints source name if location is given.
-	void printSourceName(SourceLocation const* _location);
-
-	std::ostream& m_stream;
-	ScannerFromSourceNameFun m_scannerFromSourceName;
+	static void printSourceName(
+		std::ostream& _stream,
+		SourceLocation const* _location,
+		ScannerFromSourceNameFun const& _scannerFromSourceName
+	);
 };
 
 }
