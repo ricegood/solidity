@@ -146,6 +146,19 @@ public:
 		// offset 만큼 더 rollback 된다
 		rollback(sourcePos() - currentLocation().start + offset);
 	}
+
+	void getTokenByLocation(SourceLocation location){
+		// * 알아야 할 것 : position과 location은 다르다. location은 좌표처럼 주어지고 position은 int값임..
+		// position은 뭐고, location 은 뭐에 쓰는거지
+		// 아! location 엔 (start, end) 가 있다. start랑 end는 int값임! 즉 어떤 토큰의 위치를 나타내는거고
+		// position은 지금 scanner의 가리키는 곳을 뜻하는거겠지
+
+		// 1. rollback 해서 토큰 스캔하고 저장
+
+		// 2. 그리고 다시 advance로 원래위치로 돌려놓기
+
+		// 3. 저장한 토큰값을 리턴
+	}
 	//////////
 
 	std::string source() const { return m_source.source(); }
@@ -187,7 +200,7 @@ public:
 
 	SourceLocation currentCommentLocation() const { return m_skippedComment.location; }
 	std::string const& currentCommentLiteral() const {
-	 return m_skippedComment.literal; 
+	 return m_skippedComment.literal;
 	}
 	/// Called by the parser during FunctionDefinition parsing to clear the current comment
 	void clearCurrentCommentLiteral() { m_skippedComment.literal.clear(); }
