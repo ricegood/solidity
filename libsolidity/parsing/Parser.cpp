@@ -1325,10 +1325,19 @@ ASTPointer<Expression> Parser::parseExpression(
 	ASTPointer<Expression> expression = parseBinaryExpression(4, _lookAheadIndexAccessStructure);
 	if (Token::isAssignmentOp(m_scanner->currentToken()))
 	{
+		// DEBUG //
+		cout << "@@ parseExpression() : assignment operator @@" << endl;
+		cout << "@@ LOAD or STORE @@" << endl;
+		///////////
 		Token::Value assignmentOperator = expectAssignmentOperator();
 		ASTPointer<Expression> rightHandSide = parseExpression();
 		ASTNodeFactory nodeFactory(*this, expression);
 		nodeFactory.setEndPositionFromNode(rightHandSide);
+		// DEBUG //
+		cout << "@@  RETURN nodeFactory.createNode<Assignment> @@" << endl;
+		cout << "@ expression location : " << expression->location() << endl;
+		cout << "@ rightHandSide location : " << rightHandSide->location() << endl;
+		///////////
 		return nodeFactory.createNode<Assignment>(expression, assignmentOperator, rightHandSide);
 	}
 	else if (m_scanner->currentToken() == Token::Value::Conditional)
