@@ -171,6 +171,7 @@ private:
 	void resetMyOptimization();
 	void resetMyOptimizationForFunction();
 	void checkFunctionForOptimize();
+	void printMap(std::map<std::string, unsigned int> map);
 
 	bool myOptimization = false;
 

@@ -486,6 +486,14 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 			m_scanner->next(); // just consume the ';'
 		bool const c_isConstructor = (_contractName && *header.name == *_contractName);
 
+		// DEBUG //
+		cout << "@@ numOfLoad print in this function @@" << endl;
+		printMap(numOfLoad);
+
+		cout << "@@ numOfStore print in this function @@" << endl;
+		printMap(numOfStore);
+		///////////
+
 		return nodeFactory.createNode<FunctionDefinition>(
 			header.name,
 			header.visibility,
@@ -1341,12 +1349,22 @@ ASTPointer<Expression> Parser::parseExpression(
 		cout << "===================GET TOKEN========================" << endl;
 		string leftValueLiteral = m_scanner->getTokenLiteralByLocation(leftValueLocation);
 		cout << "leftvalue literal = " << leftValueLiteral << endl;
+
+		// if is this class variable (exist in numOfLoad or numOfStore map)
+		if(numOfStore.count(leftValueLiteral) == 1) {
+			numOfStore[leftValueLiteral]++;
+		}
 		cout << "===========================================" << endl;
 
 		cout << "@ rightHandSide location : " << rightValueLocation << endl;
 		cout << "====================GET TOKEN=======================" << endl;
 		string rightValueLiteral = m_scanner->getTokenLiteralByLocation(rightValueLocation);
 		cout << "rightvalue literal = " << rightValueLiteral << endl;
+
+		// if is this class variable (exist in numOfLoad or numOfStore map)
+		if(numOfLoad.count(rightValueLiteral) == 1) {
+			numOfLoad[rightValueLiteral]++;
+		}
 		cout << "===========================================" << endl;
 		///////////
 		return nodeFactory.createNode<Assignment>(expression, assignmentOperator, rightHandSide);
@@ -1819,6 +1837,14 @@ void Parser::checkFunctionForOptimize(){
 	// 문제 : 로드/스토어를 토큰 스캔으로만 어떻게 구분하는가. for문속에서 몇번쓰이나는 어떻게 알아내는가.....
 
 
+}
+
+void Parser::printMap(std::map<std::string, unsigned int> map){
+	cout << "======================================" << endl;
+	for(auto& kv : map){
+		cout << kv.first << " : " << kv.second << endl;
+	}
+	cout << "======================================" << endl;
 }
 
 //////////
