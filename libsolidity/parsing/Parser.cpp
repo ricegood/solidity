@@ -1334,20 +1334,19 @@ ASTPointer<Expression> Parser::parseExpression(
 		ASTNodeFactory nodeFactory(*this, expression);
 		nodeFactory.setEndPositionFromNode(rightHandSide);
 		// DEBUG //
-		cout << "@@  RETURN nodeFactory.createNode<Assignment> @@" << endl;
 		SourceLocation leftValueLocation = expression->location();
 		SourceLocation rightValueLocation = rightHandSide->location();
 
 		cout << "@ expression location : " << leftValueLocation << endl;
 		cout << "===================GET TOKEN========================" << endl;
 		string leftValueLiteral = m_scanner->getTokenLiteralByLocation(leftValueLocation);
-		cout << "left value literal = " << leftValueLiteral << endl;
+		cout << "leftvalue literal = " << leftValueLiteral << endl;
 		cout << "===========================================" << endl;
 
 		cout << "@ rightHandSide location : " << rightValueLocation << endl;
 		cout << "====================GET TOKEN=======================" << endl;
 		string rightValueLiteral = m_scanner->getTokenLiteralByLocation(rightValueLocation);
-		cout << "right value literal = " << rightValueLiteral << endl;
+		cout << "rightvalue literal = " << rightValueLiteral << endl;
 		cout << "===========================================" << endl;
 		///////////
 		return nodeFactory.createNode<Assignment>(expression, assignmentOperator, rightHandSide);
