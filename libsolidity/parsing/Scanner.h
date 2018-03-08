@@ -82,6 +82,11 @@ public:
 	void insertSource(std::string s){
 		m_source.insert(m_position, s);
 	}
+
+	// DEBUG //
+	void setPosition(int _amount){
+		m_position = _amount;
+	}
 	///////////
 
 	void reset() { m_position = 0; }
@@ -145,20 +150,66 @@ public:
 	void rollBackToken(int offset){
 		// offset 만큼 더 rollback 된다
 		rollback(sourcePos() - currentLocation().start + offset);
+		std::cout << "sourcePos() - currentLocation().start = " << sourcePos() - currentLocation().start << std::endl;
+		std::cout << "sourcePos() - currentLocation().start + offset = " << sourcePos() - currentLocation().start + offset << std::endl;
 	}
 
-	void getTokenByLocation(SourceLocation location){
+	std::string getTokenLiteralByLocation(SourceLocation location){
+		int originalPos;
+		int originalLocationStart;
+		Token::Value resultToken;
+		std::string resultTokenLiteral;
+
 		// * 알아야 할 것 : position과 location은 다르다. location은 좌표처럼 주어지고 position은 int값임..
-		// position은 뭐고, location 은 뭐에 쓰는거지
-		// 아! location 엔 (start, end) 가 있다. start랑 end는 int값임! 즉 어떤 토큰의 위치를 나타내는거고
+		// location 엔 (start, end) 가 있다. start랑 end는 int값임! 즉 어떤 토큰의 위치를 나타내는거고
 		// position은 지금 scanner의 가리키는 곳을 뜻하는거겠지
 
-		// 1. rollback 해서 토큰 스캔하고 저장
+		// std::cout << "== getTokenByLocation function ==" << std::endl;
+
+		originalPos = sourcePos(); // sourcePos() == m_source.position()
+		originalLocationStart = currentLocation().start;
+
+		/*
+		// check
+		std::cout << "originalPos = " << originalPos << std::endl;
+		std::cout << "currentLocation().start = " << currentLocation().start << std::endl;
+		currentToken();	// current : semicolon
+		std::cout << "Next Token: " << peekLiteral() << " (" << std::string(Token::name(peekNextToken())) << ")" << std::endl;
+		*/
+
+		// 1. start로 rollback 해서 end까지 토큰 스캔하고 저장
+		rollback(originalPos - location.start);
+		scanToken();
+		next();
+		resultToken = currentToken();
+		resultTokenLiteral = currentLiteral();
+
+		/*
+		// check
+		std::cout << "## ROLLBACK complete!!!" << std::endl;
+		std::cout << "Next Token: " << peekLiteral() << " (" << std::string(Token::name(peekNextToken())) << ")" << std::endl;
+		*/
 
 		// 2. 그리고 다시 advance로 원래위치로 돌려놓기
+		m_source.setPosition(originalLocationStart - 1); // -1 : semicolon length
+		scanToken(); // current : semicolon
+		next();
 
-		// 3. 저장한 토큰값을 리턴
+		/*
+		// check
+		std::cout << "## Return to original source code!!!" << std::endl;
+		currentToken();
+		std::cout << "Next Token: " << peekLiteral() << " (" << std::string(Token::name(peekNextToken())) << ")" << std::endl;
+
+		std::cout << "sourcePos = " << sourcePos() << std::endl;
+		std::cout << "currentLocation().start = " << currentLocation().start << std::endl;
+		*/
+
+		// 3. 저장한 토큰 String을 리턴
+		// std::cout << "== result token : " << resultTokenLiteral << " (" << std::string(Token::name(resultToken)) << ")==" << std::endl;
+		return resultTokenLiteral;
 	}
+
 	//////////
 
 	std::string source() const { return m_source.source(); }
