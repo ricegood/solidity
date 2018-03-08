@@ -154,11 +154,10 @@ public:
 		std::cout << "sourcePos() - currentLocation().start + offset = " << sourcePos() - currentLocation().start + offset << std::endl;
 	}
 
-	std::string getTokenLiteralByLocation(SourceLocation location){
+	std::vector<std::string> getTokenLiteralByLocation(SourceLocation location){
 		int originalPos;
 		int originalLocationStart;
-		Token::Value resultToken;
-		std::string resultTokenLiteral;
+		std::vector<std::string> resultLiteralList;
 
 		// * 알아야 할 것 : position과 location은 다르다. location은 좌표처럼 주어지고 position은 int값임..
 		// location 엔 (start, end) 가 있다. start랑 end는 int값임! 즉 어떤 토큰의 위치를 나타내는거고
@@ -177,12 +176,13 @@ public:
 		std::cout << "Next Token: " << peekLiteral() << " (" << std::string(Token::name(peekNextToken())) << ")" << std::endl;
 		*/
 
-		// 1. start로 rollback 해서 end까지 토큰 스캔하고 저장
+		// 1. start로 rollback 해서 "end까지"" 토큰 스캔하고 저장
 		rollback(originalPos - location.start);
 		scanToken();
-		next();
-		resultToken = currentToken();
-		resultTokenLiteral = currentLiteral();
+		while(sourcePos() <= location.end) {
+			next();
+			resultLiteralList.push_back(currentLiteral());
+		}
 
 		/*
 		// check
@@ -207,7 +207,7 @@ public:
 
 		// 3. 저장한 토큰 String을 리턴
 		// std::cout << "== result token : " << resultTokenLiteral << " (" << std::string(Token::name(resultToken)) << ")==" << std::endl;
-		return resultTokenLiteral;
+		return resultLiteralList;
 	}
 
 	//////////

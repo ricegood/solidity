@@ -1347,23 +1347,27 @@ ASTPointer<Expression> Parser::parseExpression(
 
 		cout << "@ expression location : " << leftValueLocation << endl;
 		cout << "===================GET TOKEN========================" << endl;
-		string leftValueLiteral = m_scanner->getTokenLiteralByLocation(leftValueLocation);
-		cout << "leftvalue literal = " << leftValueLiteral << endl;
+		vector<string> leftValueLiteralList = m_scanner->getTokenLiteralByLocation(leftValueLocation);
+		for(vector<int>::size_type i = 0; i < leftValueLiteralList.size(); i++) {
+			cout << "leftvalue literal[" << i << "] = " << leftValueLiteralList[i] << endl;
 
-		// if is this class variable (exist in numOfLoad or numOfStore map)
-		if(numOfStore.count(leftValueLiteral) == 1) {
-			numOfStore[leftValueLiteral]++;
+			// if is this class variable (exist in numOfLoad or numOfStore map)
+			if(numOfStore.count(leftValueLiteralList[i]) == 1) {
+				numOfStore[leftValueLiteralList[i]]++;
+			}
 		}
 		cout << "===========================================" << endl;
 
 		cout << "@ rightHandSide location : " << rightValueLocation << endl;
 		cout << "====================GET TOKEN=======================" << endl;
-		string rightValueLiteral = m_scanner->getTokenLiteralByLocation(rightValueLocation);
-		cout << "rightvalue literal = " << rightValueLiteral << endl;
+		vector<string> rightValueLiteralList = m_scanner->getTokenLiteralByLocation(rightValueLocation);
+		for(vector<int>::size_type i = 0; i < rightValueLiteralList.size(); i++) {
+			cout << "rightvalue literal[" << i << "] = " << rightValueLiteralList[i] << endl;
 
-		// if is this class variable (exist in numOfLoad or numOfStore map)
-		if(numOfLoad.count(rightValueLiteral) == 1) {
-			numOfLoad[rightValueLiteral]++;
+			// if is this class variable (exist in numOfLoad or numOfStore map)
+			if(numOfLoad.count(rightValueLiteralList[i]) == 1) {
+				numOfLoad[rightValueLiteralList[i]]++;
+			}
 		}
 		cout << "===========================================" << endl;
 		///////////
