@@ -489,7 +489,8 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 			{
 				// DEBUG //
 				std::cout << "parseBlock()" << endl;
-				resetMyOptimizationForFunction();	// reset
+				if (!didScanForOptimize)
+					resetMyOptimizationForFunction();	// reset
 				///////////
 				block = parseBlock();
 				// DEBUG //
@@ -512,14 +513,6 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 			}
 			else
 				m_scanner->next(); // just consume the ';'
-
-			// DEBUG //
-			cout << "@@ numOfLoad print in this function @@" << endl;
-			printMap(numOfLoad);
-
-			cout << "@@ numOfStore print in this function @@" << endl;
-			printMap(numOfStore);
-			///////////
 		}
 
 		bool const c_isConstructor = (_contractName && *header.name == *_contractName);
