@@ -170,7 +170,7 @@ private:
 	// DEBUG //
 	void resetMyOptimization();
 	void resetMyOptimizationForFunction();
-	void checkFunctionForOptimize();
+	void insertKeyToMapForOptimize();
 	void printMap(std::map<std::string, unsigned int> map);
 
 	bool myOptimization = false;

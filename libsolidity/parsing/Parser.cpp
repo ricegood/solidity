@@ -434,6 +434,8 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 	RecursionGuard recursionGuard(*this);
 	ASTNodeFactory nodeFactory(*this);
 	ASTPointer<ASTString> docstring;
+	ASTPointer<Block> block;
+
 	if (m_scanner->currentCommentLiteral() != "")
 		docstring = make_shared<ASTString>(m_scanner->currentCommentLiteral());
 
@@ -448,51 +450,79 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 	{
 		// this has to be a function
 		// DEBUG //
+		int braceStartPosition;
+		bool didScanForOptimize = false;
+
 		std::cout << "This has to be a function!" << endl;
 
-		// #TODO1.
-		// Roll back before the Lbrace, and Add Source "var a2 = a"
-		// 나중에 빈도검사를 해서 allowDeclareVariable 이런 bool을 만들게되면 이 if 문 안에 새로운 조건을 넣어야겠지!
-		if(m_scanner->currentToken() == Token::LBrace){
-			// check function for optimize(one time scan!)
-			checkFunctionForOptimize();
+		for(int i = 0; i < 2 ; i++) {
+			// #TODO1.
+			// Roll back before the Lbrace, and Add Source "var a2 = a"
+			// 나중에 빈도검사를 해서 allowDeclareVariable 이런 bool을 만들게되면 이 if 문 안에 새로운 조건을 넣어야겠지!
+			if(m_scanner->currentToken() == Token::LBrace) {
+				cout << "LBrace detection!" << endl;
+				braceStartPosition = m_scanner->currentLocation().start;
 
-			// Rollback the pos
-			m_scanner->rollBackToken(-1);
+				if(didScanForOptimize){
+					// insert key to map
+					insertKeyToMapForOptimize();
 
-			// #TODO1+TODO3
-			for(auto& kv : isOptimized){
-				cout << "#TODO1. Insert(var " << kv.first << "_optimize_ = " << kv.first << ";)" << endl;
-				m_scanner->addSource(" var " + kv.first + "_optimize_ = " + kv.first + "; ");
-				kv.second = false;	// 기본적으로 false 이긴 할테지만 만일의 경우에 대비
+					// Rollback the pos
+					m_scanner->rollBackToken(-1);
+
+					// #TODO1+TODO3
+					for(auto& kv : isOptimized){
+						cout << "#TODO1. Insert(var " << kv.first << "_optimize_ = " << kv.first << ";)" << endl;
+						m_scanner->addSource(" var " + kv.first + "_optimize_ = " + kv.first + "; ");
+						kv.second = false;	// 기본적으로 false 이긴 할테지만 만일의 경우에 대비
+					}
+
+					// update Next Token
+					m_scanner->updateNextToken();
+				}
 			}
-
-			// update Next Token
-			m_scanner->updateNextToken();
-		}
-		///////////
-
-		ASTPointer<Block> block = ASTPointer<Block>();
-		nodeFactory.markEndPosition();
-		if (m_scanner->currentToken() != Token::Semicolon)
-		{
-			// DEBUG //
-			std::cout << "parseBlock()" << endl;
 			///////////
-			block = parseBlock();
-			nodeFactory.setEndPositionFromNode(block);
+
+			block = ASTPointer<Block>();
+			nodeFactory.markEndPosition();
+			if (m_scanner->currentToken() != Token::Semicolon)
+			{
+				// DEBUG //
+				std::cout << "parseBlock()" << endl;
+				resetMyOptimizationForFunction();	// reset
+				///////////
+				block = parseBlock();
+				// DEBUG //
+				if (!didScanForOptimize) {
+					didScanForOptimize = true;
+					m_scanner->rollBackToPosition(braceStartPosition);	// rollback
+
+					// DEBUG //
+					cout << "@@ numOfLoad print in this function @@" << endl;
+					printMap(numOfLoad);
+
+					cout << "@@ numOfStore print in this function @@" << endl;
+					printMap(numOfStore);
+					///////////
+
+					continue;
+				}
+				///////////
+				nodeFactory.setEndPositionFromNode(block);
+			}
+			else
+				m_scanner->next(); // just consume the ';'
+
+			// DEBUG //
+			cout << "@@ numOfLoad print in this function @@" << endl;
+			printMap(numOfLoad);
+
+			cout << "@@ numOfStore print in this function @@" << endl;
+			printMap(numOfStore);
+			///////////
 		}
-		else
-			m_scanner->next(); // just consume the ';'
+
 		bool const c_isConstructor = (_contractName && *header.name == *_contractName);
-
-		// DEBUG //
-		cout << "@@ numOfLoad print in this function @@" << endl;
-		printMap(numOfLoad);
-
-		cout << "@@ numOfStore print in this function @@" << endl;
-		printMap(numOfStore);
-		///////////
 
 		return nodeFactory.createNode<FunctionDefinition>(
 			header.name,
@@ -1827,15 +1857,19 @@ void Parser::resetMyOptimizationForFunction(){
 	isElementaryTypeForOptimize = false;
 }
 
-void Parser::checkFunctionForOptimize(){
-	// reset
-	resetMyOptimizationForFunction();
-
+void Parser::insertKeyToMapForOptimize(){
 	// check
 	// 이 함수 내용만 다 구현하고 나면 빈도검사 적용도 완벽히완료!!!
 
 	// 1) 스캐너를 이용해서 토큰 빈도수를 체크하고, map(numOfLoad/numOfStore) 에 빈도를 기록
 	// 2) LOAD + STORE*100 >= 101 일 경우 isOptimized/isOptimizingDeclared 에 varID 를 false 로 insert
+	for(auto& kv : numOfLoad) {
+		if(numOfLoad[kv.first] + numOfStore[kv.first]*100 >= 101) {
+			cout << "*INSERT " << kv.first << " to isOptimized map!" << endl;
+			isOptimized[kv.first] = false;
+			isOptimizingDeclared[kv.first+"_optimize_"] = false;
+		}
+	}
 	// 3) 쓰고나서는 m_scanner->currentToken == LBrace 이어야함! 딱 그상태에서 들어왔으니까.
 
 	// 문제 : 로드/스토어를 토큰 스캔으로만 어떻게 구분하는가. for문속에서 몇번쓰이나는 어떻게 알아내는가.....

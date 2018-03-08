@@ -147,6 +147,7 @@ public:
 		changeVariable = b;
 	}
 
+	// todo : 이거 없애도 될지도 모름
 	void rollBackToken(int offset){
 		// offset 만큼 더 rollback 된다
 		rollback(sourcePos() - currentLocation().start + offset);
@@ -154,6 +155,13 @@ public:
 		std::cout << "sourcePos() - currentLocation().start + offset = " << sourcePos() - currentLocation().start + offset << std::endl;
 	}
 
+	void rollBackToPosition(int position){
+		rollback(sourcePos() - position);
+		scanToken();
+		next();
+	}
+
+	// todo: 여기 함수들 rollBackToPosition 사용하면 안되나?
 	std::vector<std::string> getTokenLiteralByLocation(SourceLocation location){
 		int originalPos;
 		int originalLocationStart;
