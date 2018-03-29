@@ -1455,6 +1455,13 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 	Token::Value token = m_scanner->currentToken();
 	if (!_lookAheadIndexAccessStructure && (Token::isUnaryOp(token) || Token::isCountOp(token)))
 	{
+		// DEBUG //
+		// prefix 있다는 것 (!, ~, ++, --, delete) => 즉, 나는 ++와 -- 경우에만
+		// isCountOp(token) 이 즉 ++와 --를 말함
+		if (Token::isCountOp(token)) {
+			cout << "**** Detect INC(++) or DEC(--) prefix ****" << endl;
+		}
+		///////////
 		// prefix expression
 		m_scanner->next();
 		ASTPointer<Expression> subExpression = parseUnaryExpression();
@@ -1469,6 +1476,11 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		if (!Token::isCountOp(token))
 			return subExpression;
 		nodeFactory.markEndPosition();
+		// DEBUG //
+		if (Token::isCountOp(token)) {
+			cout << "**** Detect INC(++) or DEC(--) postfix ****" << endl;
+		}
+		///////////
 		m_scanner->next();
 		return nodeFactory.createNode<UnaryOperation>(token, subExpression, false);
 	}
