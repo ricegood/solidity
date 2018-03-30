@@ -1049,6 +1049,40 @@ ASTPointer<Statement> Parser::parseStatement()
 		break;
 	case Token::Return:
 	{
+		// DEBUG //
+		// TODO2 - exception handling
+		// add "a=a2" before return token.
+
+		cout << "** RETURN TOKEN DETECTED **" << endl;
+
+		// Rollback the token
+		m_scanner->rollBackToken(1);
+
+		// Add source "a = a2" when current pos is before '}' (end of the function)
+		for(auto& kv : isOptimized){
+			if(kv.second){
+				cout << "#TODO2. Insert(" << kv.first << " = " << kv.first << "_optimize_;" << endl;
+				m_scanner->addSource(" " + kv.first + " = " + kv.first + "_optimize_; ");
+				kv.second = false;	// 막줄 추가하고 flag=false => 중복으로 TODO2 를 하지 않도록 함.
+			}
+		}
+
+		// Update next & current token
+		m_scanner->updateNextToken();
+		m_scanner->next();
+
+		if (m_scanner->currentToken() != Token::Return) {
+			cout << "You add some sources before return. scanning that source." << endl;
+			statement = parseSimpleStatement(docString);
+			break;
+		}
+		else {
+			cout << "You don't add any soureces before return. just continue to scan." << endl;
+			m_scanner->currentToken();
+		}
+
+		///////////
+		
 		ASTNodeFactory nodeFactory(*this);
 		ASTPointer<Expression> expression;
 		if (m_scanner->next() != Token::Semicolon)
