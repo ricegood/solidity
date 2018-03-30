@@ -454,61 +454,73 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 		bool didScanForOptimize = false;
 
 		std::cout << "This has to be a function!" << endl;
+		if(m_scanner->currentToken() == Token::LBrace) {
+			for(int i = 0; i < 2 ; i++) {
+				// #TODO1.
+				// Roll back before the Lbrace, and Add Source "var a2 = a"
+				// 나중에 빈도검사를 해서 allowDeclareVariable 이런 bool을 만들게되면 이 if 문 안에 새로운 조건을 넣어야겠지!
+				if(m_scanner->currentToken() == Token::LBrace) {
+					cout << "LBrace detection!" << endl;
+					braceStartPosition = m_scanner->currentLocation().start;
 
-		for(int i = 0; i < 2 ; i++) {
-			// #TODO1.
-			// Roll back before the Lbrace, and Add Source "var a2 = a"
-			// 나중에 빈도검사를 해서 allowDeclareVariable 이런 bool을 만들게되면 이 if 문 안에 새로운 조건을 넣어야겠지!
-			if(m_scanner->currentToken() == Token::LBrace) {
-				cout << "LBrace detection!" << endl;
-				braceStartPosition = m_scanner->currentLocation().start;
+					if(didScanForOptimize){
+						// insert key to map
+						insertKeyToMapForOptimize();
 
-				if(didScanForOptimize){
-					// insert key to map
-					insertKeyToMapForOptimize();
+						// Rollback the pos
+						m_scanner->rollBackToken(-1);
 
-					// Rollback the pos
-					m_scanner->rollBackToken(-1);
+						// #TODO1+TODO3
+						for(auto& kv : isOptimized){
+							cout << "#TODO1. Insert(var " << kv.first << "_optimize_ = " << kv.first << ";)" << endl;
+							m_scanner->addSource(" var " + kv.first + "_optimize_ = " + kv.first + "; ");
+							kv.second = false;	// 기본적으로 false 이긴 할테지만 만일의 경우에 대비
+						}
 
-					// #TODO1+TODO3
-					for(auto& kv : isOptimized){
-						cout << "#TODO1. Insert(var " << kv.first << "_optimize_ = " << kv.first << ";)" << endl;
-						m_scanner->addSource(" var " + kv.first + "_optimize_ = " + kv.first + "; ");
-						kv.second = false;	// 기본적으로 false 이긴 할테지만 만일의 경우에 대비
+						// update Next Token
+						m_scanner->updateNextToken();
 					}
-
-					// update Next Token
-					m_scanner->updateNextToken();
 				}
-			}
-			///////////
+				///////////
 
+				block = ASTPointer<Block>();
+				nodeFactory.markEndPosition();
+				if (m_scanner->currentToken() != Token::Semicolon)
+				{
+					// DEBUG //
+					std::cout << "parseBlock()" << endl;
+					if (!didScanForOptimize)
+						resetMyOptimizationForFunction();	// reset
+					///////////
+					block = parseBlock();
+					// DEBUG //
+					if (!didScanForOptimize) {
+						didScanForOptimize = true;
+						m_scanner->rollBackToPosition(braceStartPosition);	// rollback
+
+						// DEBUG //
+						cout << "@@ numOfLoad print in this function @@" << endl;
+						printMap(numOfLoad);
+
+						cout << "@@ numOfStore print in this function @@" << endl;
+						printMap(numOfStore);
+						///////////
+
+						continue;
+					}
+					///////////
+					nodeFactory.setEndPositionFromNode(block);
+				}
+				else
+					m_scanner->next(); // just consume the ';'
+			}
+		}
+		else {
 			block = ASTPointer<Block>();
 			nodeFactory.markEndPosition();
 			if (m_scanner->currentToken() != Token::Semicolon)
 			{
-				// DEBUG //
-				std::cout << "parseBlock()" << endl;
-				if (!didScanForOptimize)
-					resetMyOptimizationForFunction();	// reset
-				///////////
 				block = parseBlock();
-				// DEBUG //
-				if (!didScanForOptimize) {
-					didScanForOptimize = true;
-					m_scanner->rollBackToPosition(braceStartPosition);	// rollback
-
-					// DEBUG //
-					cout << "@@ numOfLoad print in this function @@" << endl;
-					printMap(numOfLoad);
-
-					cout << "@@ numOfStore print in this function @@" << endl;
-					printMap(numOfStore);
-					///////////
-
-					continue;
-				}
-				///////////
 				nodeFactory.setEndPositionFromNode(block);
 			}
 			else
@@ -1082,7 +1094,7 @@ ASTPointer<Statement> Parser::parseStatement()
 		}
 
 		///////////
-		
+
 		ASTNodeFactory nodeFactory(*this);
 		ASTPointer<Expression> expression;
 		if (m_scanner->next() != Token::Semicolon)
