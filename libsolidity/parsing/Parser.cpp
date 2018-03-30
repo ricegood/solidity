@@ -1485,6 +1485,8 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 	// #TODO2+TODO3
 	// just add _optimize_ to the value name.
 
+	bool isCountOp = false;
+
 	if(isOptimized.count(m_scanner->currentLiteral()) == 1 && isOptimized.at(m_scanner->currentLiteral())){
 		cout << "#TODO2. Change " << m_scanner->currentLiteral() << " to " << m_scanner->currentLiteral() << "_optimize_" << endl;
 		m_scanner->addString("_optimize_");
@@ -1505,6 +1507,7 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		// prefix 있다는 것 (!, ~, ++, --, delete) => 즉, 나는 ++와 -- 경우에만
 		// isCountOp(token) 이 즉 ++와 --를 말함
 		if (Token::isCountOp(token)) {
+			isCountOp = true;
 			cout << "**** Detect INC(++) or DEC(--) prefix ****" << endl;
 		}
 		///////////
@@ -1514,19 +1517,22 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		nodeFactory.setEndPositionFromNode(subExpression);
 		// DEBUG //
 		// prefix 다음의 identifier 토큰이름을 저장하기
-		cout << "====================GET TOKEN=======================" << endl;
-		SourceLocation prefixVariableLocation = subExpression->location();
-		vector<string> prefixVariableList = m_scanner->getTokenLiteralByLocation(prefixVariableLocation);
-		for(vector<int>::size_type i = 0; i < prefixVariableList.size(); i++) {
-			cout << "prefix variable literal[" << i << "] = " << prefixVariableList[i] << endl;
+		if (isCountOp) {
+			cout << "====================GET TOKEN=======================" << endl;
+			SourceLocation prefixVariableLocation = subExpression->location();
+			vector<string> prefixVariableList = m_scanner->getTokenLiteralByLocation(prefixVariableLocation);
+			for(vector<int>::size_type i = 0; i < prefixVariableList.size(); i++) {
+				cout << "prefix variable literal[" << i << "] = " << prefixVariableList[i] << endl;
 
-			// if is this class variable (exist in numOfLoad or numOfStore map)
-			if(numOfLoad.count(prefixVariableList[i]) == 1) {
-				numOfLoad[prefixVariableList[i]]++;
-				numOfStore[prefixVariableList[i]]++;
+				// if is this class variable (exist in numOfLoad or numOfStore map)
+				if(numOfLoad.count(prefixVariableList[i]) == 1) {
+					numOfLoad[prefixVariableList[i]]++;
+					numOfStore[prefixVariableList[i]]++;
+				}
 			}
+			cout << "===========================================" << endl;
+			isCountOp = false;
 		}
-		cout << "===========================================" << endl;
 		///////////
 		return nodeFactory.createNode<UnaryOperation>(token, subExpression, true);
 	}
@@ -1540,6 +1546,7 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		nodeFactory.markEndPosition();
 		// DEBUG //
 		if (Token::isCountOp(token)) {
+			isCountOp = true;
 			cout << "**** Detect INC(++) or DEC(--) postfix ****" << endl;
 		}
 		///////////
@@ -1547,28 +1554,30 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 
 		// DEBUG //
 		// postfix 이전의 identifier 토큰이름을 저장하기
-		cout << "====================GET TOKEN=======================" << endl;
-		SourceLocation postfixVariableLocation = subExpression->location();
-		vector<string> postfixVariableList = m_scanner->getTokenLiteralByLocation(postfixVariableLocation);
-		for(vector<int>::size_type i = 0; i < postfixVariableList.size(); i++) {
-			cout << "postfix variable literal[" << i << "] = " << postfixVariableList[i] << endl;
+		if (isCountOp) {
+			cout << "====================GET TOKEN=======================" << endl;
+			SourceLocation postfixVariableLocation = subExpression->location();
+			vector<string> postfixVariableList = m_scanner->getTokenLiteralByLocation(postfixVariableLocation);
+			for(vector<int>::size_type i = 0; i < postfixVariableList.size(); i++) {
+				cout << "postfix variable literal[" << i << "] = " << postfixVariableList[i] << endl;
 
-			// if is this class variable (exist in numOfLoad or numOfStore map)
-			if(numOfLoad.count(postfixVariableList[i]) == 1) {
-				numOfLoad[postfixVariableList[i]]++;
-				numOfStore[postfixVariableList[i]]++;
+				// if is this class variable (exist in numOfLoad or numOfStore map)
+				if(numOfLoad.count(postfixVariableList[i]) == 1) {
+					numOfLoad[postfixVariableList[i]]++;
+					numOfStore[postfixVariableList[i]]++;
+				}
 			}
-		}
-		cout << "===========================================" << endl;
+			cout << "===========================================" << endl;
 
-		// todo : 동작은 하는데 최적화는 아님
-		// 여기서는 왜 next 를 한번 더 해야하는진 모르겠다..
-		// 아 아마 '그리고 다시 advance로 원래위치로 돌려놓기' 이부분 때문일듯
-		// 다른 스캔하는 것들은 다 ++num; , num = ~~~; 이런식으로 끝부분을 스캔하는 느낌인데
-		// 얘는 num++; 의 num 을 스캔하는거니까 -1 의 semicolon 이 먹히질 않는건가..흠
-		// 아무튼 되니까 일단 놔두자.
-		m_scanner->next();
-		///////////
+			// todo : 동작은 하는데 최적화는 아님
+			// 여기서는 왜 next 를 한번 더 해야하는진 모르겠다..
+			// 아 아마 '그리고 다시 advance로 원래위치로 돌려놓기' 이부분 때문일듯
+			// 다른 스캔하는 것들은 다 ++num; , num = ~~~; 이런식으로 끝부분을 스캔하는 느낌인데
+			// 얘는 num++; 의 num 을 스캔하는거니까 -1 의 semicolon 이 먹히질 않는건가..흠
+			// 아무튼 되니까 일단 놔두자.
+			m_scanner->next();
+			///////////
+		}
 		return nodeFactory.createNode<UnaryOperation>(token, subExpression, false);
 	}
 }
