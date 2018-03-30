@@ -1466,6 +1466,22 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		m_scanner->next();
 		ASTPointer<Expression> subExpression = parseUnaryExpression();
 		nodeFactory.setEndPositionFromNode(subExpression);
+		// DEBUG //
+		// prefix 다음의 identifier 토큰이름을 저장하기
+		cout << "====================GET TOKEN=======================" << endl;
+		SourceLocation prefixVariableLocation = subExpression->location();
+		vector<string> prefixVariableList = m_scanner->getTokenLiteralByLocation(prefixVariableLocation);
+		for(vector<int>::size_type i = 0; i < prefixVariableList.size(); i++) {
+			cout << "prefix variable literal[" << i << "] = " << prefixVariableList[i] << endl;
+
+			// if is this class variable (exist in numOfLoad or numOfStore map)
+			if(numOfLoad.count(prefixVariableList[i]) == 1) {
+				numOfLoad[prefixVariableList[i]]++;
+				numOfStore[prefixVariableList[i]]++;
+			}
+		}
+		cout << "===========================================" << endl;
+		///////////
 		return nodeFactory.createNode<UnaryOperation>(token, subExpression, true);
 	}
 	else
@@ -1482,6 +1498,31 @@ ASTPointer<Expression> Parser::parseUnaryExpression(
 		}
 		///////////
 		m_scanner->next();
+
+		// DEBUG //
+		// postfix 이전의 identifier 토큰이름을 저장하기
+		cout << "====================GET TOKEN=======================" << endl;
+		SourceLocation postfixVariableLocation = subExpression->location();
+		vector<string> postfixVariableList = m_scanner->getTokenLiteralByLocation(postfixVariableLocation);
+		for(vector<int>::size_type i = 0; i < postfixVariableList.size(); i++) {
+			cout << "postfix variable literal[" << i << "] = " << postfixVariableList[i] << endl;
+
+			// if is this class variable (exist in numOfLoad or numOfStore map)
+			if(numOfLoad.count(postfixVariableList[i]) == 1) {
+				numOfLoad[postfixVariableList[i]]++;
+				numOfStore[postfixVariableList[i]]++;
+			}
+		}
+		cout << "===========================================" << endl;
+
+		// todo : 동작은 하는데 최적화는 아님
+		// 여기서는 왜 next 를 한번 더 해야하는진 모르겠다..
+		// 아 아마 '그리고 다시 advance로 원래위치로 돌려놓기' 이부분 때문일듯
+		// 다른 스캔하는 것들은 다 ++num; , num = ~~~; 이런식으로 끝부분을 스캔하는 느낌인데
+		// 얘는 num++; 의 num 을 스캔하는거니까 -1 의 semicolon 이 먹히질 않는건가..흠
+		// 아무튼 되니까 일단 놔두자.
+		m_scanner->next();
+		///////////
 		return nodeFactory.createNode<UnaryOperation>(token, subExpression, false);
 	}
 }
