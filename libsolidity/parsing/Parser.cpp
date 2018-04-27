@@ -1965,7 +1965,7 @@ void Parser::insertKeyToMapForOptimize(){
 	// 1) 스캐너를 이용해서 토큰 빈도수를 체크하고, map(numOfLoad/numOfStore) 에 빈도를 기록
 	// 2) LOAD + STORE*100 >= 101 일 경우 isOptimized/isOptimizingDeclared 에 varID 를 false 로 insert
 	for(auto& kv : numOfLoad) {
-		if(numOfLoad[kv.first] + numOfStore[kv.first]*100 >= 101) {
+		if(numOfLoad[kv.first] + numOfStore[kv.first]*100 > 101) {
 			cout << "*INSERT " << kv.first << " to isOptimized map!" << endl;
 			isOptimized[kv.first] = false;
 			isOptimizingDeclared[kv.first+"_optimize_"] = false;
