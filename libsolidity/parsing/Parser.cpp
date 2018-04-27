@@ -1155,7 +1155,9 @@ ASTPointer<IfStatement> Parser::parseIfStatement(ASTPointer<ASTString> const& _d
 	ASTNodeFactory nodeFactory(*this);
 	expectToken(Token::If);
 	expectToken(Token::LParen);
+	isIfStatementConditionParisng = true;
 	ASTPointer<Expression> condition = parseExpression();
+	isIfStatementConditionParisng = false;
 	expectToken(Token::RParen);
 	ASTPointer<Statement> trueBody = parseStatement();
 	ASTPointer<Statement> falseBody;
@@ -1474,6 +1476,22 @@ ASTPointer<Expression> Parser::parseBinaryExpression(
 {
 	RecursionGuard recursionGuard(*this);
 	ASTPointer<Expression> expression = parseUnaryExpression(_lookAheadIndexAccessStructure);
+	// DEBUG //
+	if (isIfStatementConditionParisng) {
+		SourceLocation expressionLocation = expression->location();
+		cout << "===IF STATEMENT CONDITION EXPRESSION===" << endl;
+		vector<string> literalList = m_scanner->getTokenLiteralByLocation(expressionLocation);
+		for(vector<int>::size_type i = 0; i < literalList.size(); i++) {
+			cout << "binary expression literal[" << i << "] = " << literalList[i] << endl;
+			// if is this class variable (exist in numOfLoad or numOfStore map)
+			if(numOfLoad.count(literalList[i]) == 1) {
+				if (isInForLoop) numOfLoad[literalList[i]]++;
+				numOfLoad[literalList[i]]++;
+			}
+		}
+		cout << "=======================================" << endl;
+  }
+	///////////
 	ASTNodeFactory nodeFactory(*this, expression);
 	int precedence = Token::precedence(m_scanner->currentToken());
 	for (; precedence >= _minPrecedence; --precedence)

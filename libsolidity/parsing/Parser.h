@@ -176,6 +176,7 @@ private:
 	bool myOptimization = false;
 
 	bool isInForLoop = false;
+	bool isIfStatementConditionParisng = false;
 	bool isContractVariableDeclaration = false;
 	bool isFunctionVariableDeclaration = false;
 	bool isElementaryTypeForOptimize = false;
