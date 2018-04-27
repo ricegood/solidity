@@ -1209,6 +1209,10 @@ ASTPointer<ForStatement> Parser::parseForStatement(ASTPointer<ASTString> const& 
 	expectToken(Token::For);
 	expectToken(Token::LParen);
 
+	// DEBUG //
+	std::cout << "===== isInForLoop TRUE =====" << endl;
+	isInForLoop = true;
+	///////////
 	// LTODO: Maybe here have some predicate like peekExpression() instead of checking for semicolon and RParen?
 	if (m_scanner->currentToken() != Token::Semicolon)
 		initExpression = parseSimpleStatement(ASTPointer<ASTString>());
@@ -1224,6 +1228,11 @@ ASTPointer<ForStatement> Parser::parseForStatement(ASTPointer<ASTString> const& 
 
 	ASTPointer<Statement> body = parseStatement();
 	nodeFactory.setEndPositionFromNode(body);
+
+	// DEBUG //
+	std::cout << "===== isInForLoop FALSE =====" << endl;
+	isInForLoop = false;
+	///////////
 	return nodeFactory.createNode<ForStatement>(
 		_docString,
 		initExpression,
@@ -1422,6 +1431,7 @@ ASTPointer<Expression> Parser::parseExpression(
 
 			// if is this class variable (exist in numOfLoad or numOfStore map)
 			if(numOfStore.count(leftValueLiteralList[i]) == 1) {
+				if (isInForLoop) numOfStore[leftValueLiteralList[i]]++;
 				numOfStore[leftValueLiteralList[i]]++;
 			}
 		}
@@ -1435,6 +1445,7 @@ ASTPointer<Expression> Parser::parseExpression(
 
 			// if is this class variable (exist in numOfLoad or numOfStore map)
 			if(numOfLoad.count(rightValueLiteralList[i]) == 1) {
+				if (isInForLoop) numOfLoad[rightValueLiteralList[i]]++;
 				numOfLoad[rightValueLiteralList[i]]++;
 			}
 		}
